@@ -1,0 +1,406 @@
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: unless-stopped
+    ports:
+      - "${QDRANT_PORT:-6333}:6333"
+      - "${QDRANT_GRPC_PORT:-6334}:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  n8n:
+    image: docker.n8n.io/n8nio/n8n:latest
+    restart: unless-stopped
+    depends_on:
+      - qdrant
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5678/healthz >/dev/null 2>&1 || wget -qO- http://127.0.0.1:5678/ >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 45s
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    environment:
+      - N8N_HOST=${N8N_HOST:-localhost}
+      - N8N_PORT=${N8N_PORT:-5678}
+      - N8N_PROTOCOL=${N8N_PROTOCOL:-http}
+      - WEBHOOK_URL=${WEBHOOK_URL:-http://localhost:5678/}
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE:-America/New_York}
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      - N8N_RESTRICT_FILE_ACCESS_TO=/files
+      - NODE_FUNCTION_ALLOW_EXTERNAL=nodemailer,adm-zip
+      - N8N_BLOCK_ENV_ACCESS_IN_NODE=false
+      - BRAND_NAME=${BRAND_NAME:-VGI Skill Universe!}
+      - TELEGRAM_RAG_WELCOME=${TELEGRAM_RAG_WELCOME:-}
+      - BRAND_VOICE=${BRAND_VOICE:-Professional, clear, helpful}
+      - TARGET_AUDIENCE=${TARGET_AUDIENCE:-Business professionals}
+      - BRAND_WEBSITE=${BRAND_WEBSITE:-}
+      - DEFAULT_CTA=${DEFAULT_CTA:-Learn more}
+      - AI_PROVIDER=${AI_PROVIDER:-openai}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini}
+      - OPENAI_MODEL_SPECIALIST=${OPENAI_MODEL_SPECIALIST:-gpt-4o-mini}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-gpt-4o-mini}
+      - OPENROUTER_FALLBACK_MODEL=${OPENROUTER_FALLBACK_MODEL:-}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
+      - EMBEDDING_DIMENSIONS=${EMBEDDING_DIMENSIONS:-1536}
+      - OCR_VISION_MODEL=${OCR_VISION_MODEL:-gpt-4o-mini}
+      - MAX_PDF_OCR_IMAGES=${MAX_PDF_OCR_IMAGES:-25}
+      - PDF_OCR_MAX_TOKENS=${PDF_OCR_MAX_TOKENS:-700}
+      - EMAIL_FROM=${EMAIL_FROM:-}
+      - EMAIL_TO=${EMAIL_TO:-}
+      - SMTP_HOST=${SMTP_HOST:-smtpout.secureserver.net}
+      - SMTP_PORT=${SMTP_PORT:-465}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SLACK_ALERT_CHANNEL_ID=${SLACK_ALERT_CHANNEL_ID:-}
+      - ENABLE_SLACK=${ENABLE_SLACK:-false}
+      - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - TELEGRAM_BOT_TOKEN_DRIVE_RAG=${TELEGRAM_BOT_TOKEN_DRIVE_RAG:-}
+      - TELEGRAM_RAG_WELCOME=${TELEGRAM_RAG_WELCOME:-}
+      - SERPER_API_KEY=${SERPER_API_KEY:-}
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./files:/files
+    entrypoint: ["/bin/sh", "-c", "mkdir -p /files/knowledge /files/resumes /home/node/.n8n/custom && cd /home/node/.n8n/custom && (test -f package.json || npm init -y) && npm install nodemailer --omit=dev 2>/dev/null; export NODE_PATH=/home/node/.n8n/custom/node_modules; exec tini -- /docker-entrypoint.sh"]
+    env_file:
+      - .env
+
+  telegram-bot:
+    image: node:20-alpine
+    restart: unless-stopped
+    depends_on:
+      n8n:
+        condition: service_healthy
+    environment:
+      - NODE_OPTIONS=--dns-result-order=ipv4first
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - N8N_INTERNAL_URL=${N8N_INTERNAL_URL:-http://n8n:5678}
+      - N8N_TELEGRAM_WEBHOOK=${N8N_TELEGRAM_WEBHOOK:-}
+      - N8N_TELEGRAM_WEBHOOK_REVIEW=${N8N_TELEGRAM_WEBHOOK_REVIEW:-}
+      - N8N_TELEGRAM_WEBHOOK_RAG=${N8N_TELEGRAM_WEBHOOK_RAG:-}
+      - N8N_TELEGRAM_WEBHOOK_BOOKING=${N8N_TELEGRAM_WEBHOOK_BOOKING:-}
+      - TELEGRAM_DATA_DIR=/data
+      - APPOINTMENT_SESSIONS_FILE=/data/appointments/sessions.json
+      - TELEGRAM_OFFSET_FILE=/data/telegram-poller-offset.json
+      - TELEGRAM_POLL_TIMEOUT=${TELEGRAM_POLL_TIMEOUT:-30}
+      - TELEGRAM_WEBHOOK_TIMEOUT_MS=${TELEGRAM_WEBHOOK_TIMEOUT_MS:-300000}
+    volumes:
+      - ./scripts/telegram-poller.js:/app/telegram-poller.js:ro
+      - ./scripts/lib:/app/lib:ro
+      - ./files:/data
+    working_dir: /app
+    command: ["node", "telegram-poller.js"]
+    env_file:
+      - .env
+    profiles:
+      - telegram
+
+  telegram-bot-rag:
+    image: node:20-alpine
+    restart: unless-stopped
+    depends_on:
+      n8n:
+        condition: service_healthy
+    environment:
+      - NODE_OPTIONS=--dns-result-order=ipv4first
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_RAG:-}
+      - TELEGRAM_BOT_TOKEN_DRIVE_RAG=${TELEGRAM_BOT_TOKEN_DRIVE_RAG:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - TELEGRAM_POLLER_KIND=rag
+      - N8N_INTERNAL_URL=${N8N_INTERNAL_URL:-http://n8n:5678}
+      - N8N_TELEGRAM_WEBHOOK=${N8N_TELEGRAM_WEBHOOK_RAG:-}
+      - TELEGRAM_DATA_DIR=/data
+      - TELEGRAM_OFFSET_FILE=/data/telegram-poller-offset-rag.json
+      - TELEGRAM_POLL_TIMEOUT=${TELEGRAM_POLL_TIMEOUT:-30}
+      - TELEGRAM_WEBHOOK_TIMEOUT_MS=${TELEGRAM_WEBHOOK_TIMEOUT_MS:-300000}
+      - TELEGRAM_RAG_WELCOME=${TELEGRAM_RAG_WELCOME:-}
+      - BRAND_NAME=${BRAND_NAME:-VGI Skill Universe!}
+    volumes:
+      - ./scripts/telegram-dedicated-poller.js:/app/telegram-dedicated-poller.js:ro
+      - ./scripts/lib:/app/lib:ro
+      - ./files:/data
+    working_dir: /app
+    command: ["node", "telegram-dedicated-poller.js"]
+    env_file:
+      - .env
+    profiles:
+      - telegram-rag-legacy
+
+  telegram-bot-review:
+    image: node:20-alpine
+    restart: unless-stopped
+    depends_on:
+      n8n:
+        condition: service_healthy
+    environment:
+      - NODE_OPTIONS=--dns-result-order=ipv4first
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_REVIEW:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - TELEGRAM_POLLER_KIND=review
+      - N8N_INTERNAL_URL=${N8N_INTERNAL_URL:-http://n8n:5678}
+      - N8N_TELEGRAM_WEBHOOK=${N8N_TELEGRAM_WEBHOOK_REVIEW:-}
+      - TELEGRAM_DATA_DIR=/data
+      - TELEGRAM_OFFSET_FILE=/data/telegram-poller-offset-review.json
+      - TELEGRAM_POLL_TIMEOUT=${TELEGRAM_POLL_TIMEOUT:-30}
+      - TELEGRAM_WEBHOOK_TIMEOUT_MS=${TELEGRAM_WEBHOOK_TIMEOUT_MS:-300000}
+    volumes:
+      - ./scripts/telegram-dedicated-poller.js:/app/telegram-dedicated-poller.js:ro
+      - ./scripts/lib:/app/lib:ro
+      - ./files:/data
+    working_dir: /app
+    command: ["node", "telegram-dedicated-poller.js"]
+    env_file:
+      - .env
+    profiles:
+      - telegram-dedicated
+
+  telegram-bot-booking:
+    image: node:20-alpine
+    restart: unless-stopped
+    depends_on:
+      n8n:
+        condition: service_healthy
+    environment:
+      - NODE_OPTIONS=--dns-result-order=ipv4first
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_BOOKING:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - TELEGRAM_POLLER_KIND=booking
+      - N8N_INTERNAL_URL=${N8N_INTERNAL_URL:-http://n8n:5678}
+      - N8N_TELEGRAM_WEBHOOK=${N8N_TELEGRAM_WEBHOOK_BOOKING:-}
+      - TELEGRAM_DATA_DIR=/data
+      - APPOINTMENT_SESSIONS_FILE=/data/appointments/sessions.json
+      - APPOINTMENT_BOOKINGS_FILE=/data/appointments/bookings.json
+      - TELEGRAM_OFFSET_FILE=/data/telegram-poller-offset-booking.json
+      - TELEGRAM_POLL_TIMEOUT=${TELEGRAM_POLL_TIMEOUT:-30}
+      - TELEGRAM_WEBHOOK_TIMEOUT_MS=${TELEGRAM_WEBHOOK_TIMEOUT_MS:-300000}
+      - BRAND_NAME=${BRAND_NAME:-VGI Skill Universe!}
+    volumes:
+      - ./scripts/telegram-dedicated-poller.js:/app/telegram-dedicated-poller.js:ro
+      - ./scripts/lib:/app/lib:ro
+      - ./files:/data
+    working_dir: /app
+    command: ["node", "telegram-dedicated-poller.js"]
+    env_file:
+      - .env
+    profiles:
+      - telegram-dedicated
+
+  telegram-bot-marketing:
+    image: node:20-alpine
+    restart: unless-stopped
+    depends_on:
+      n8n:
+        condition: service_healthy
+    environment:
+      - NODE_OPTIONS=--dns-result-order=ipv4first
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_MARKETING:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - TELEGRAM_POLLER_KIND=marketing
+      - N8N_INTERNAL_URL=${N8N_INTERNAL_URL:-http://n8n:5678}
+      - N8N_TELEGRAM_WEBHOOK=${N8N_TELEGRAM_WEBHOOK_MARKETING:-}
+      - TELEGRAM_DATA_DIR=/data
+      - TELEGRAM_OFFSET_FILE=/data/telegram-poller-offset-marketing.json
+      - TELEGRAM_POLL_TIMEOUT=${TELEGRAM_POLL_TIMEOUT:-30}
+      - TELEGRAM_WEBHOOK_TIMEOUT_MS=${TELEGRAM_WEBHOOK_TIMEOUT_MS:-300000}
+      - BRAND_NAME=${BRAND_NAME:-VGI Skill Universe!}
+      - BRAND_WEBSITE=${BRAND_WEBSITE:-}
+      - TARGET_AUDIENCE=${TARGET_AUDIENCE:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-}
+      - EMAIL_FROM=${EMAIL_FROM:-}
+      - EMAIL_TO=${EMAIL_TO:-}
+    volumes:
+      - ./scripts/telegram-dedicated-poller.js:/app/telegram-dedicated-poller.js:ro
+      - ./scripts/lib:/app/lib:ro
+      - ./files:/data
+    working_dir: /app
+    command: ["node", "telegram-dedicated-poller.js"]
+    env_file:
+      - .env
+    profiles:
+      - telegram-dedicated
+
+  telegram-bot-portfolio:
+    image: node:20-alpine
+    restart: unless-stopped
+    depends_on:
+      n8n:
+        condition: service_healthy
+    environment:
+      - NODE_OPTIONS=--dns-result-order=ipv4first
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_PORTFOLIO:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - TELEGRAM_POLLER_KIND=portfolio
+      - N8N_INTERNAL_URL=${N8N_INTERNAL_URL:-http://n8n:5678}
+      - N8N_TELEGRAM_WEBHOOK=${N8N_TELEGRAM_WEBHOOK_PORTFOLIO:-}
+      - TELEGRAM_DATA_DIR=/data
+      - TELEGRAM_OFFSET_FILE=/data/telegram-poller-offset-portfolio.json
+      - TELEGRAM_POLL_TIMEOUT=${TELEGRAM_POLL_TIMEOUT:-30}
+      - TELEGRAM_WEBHOOK_TIMEOUT_MS=${TELEGRAM_WEBHOOK_TIMEOUT_MS:-300000}
+      - FINNHUB_API_KEY=${FINNHUB_API_KEY:-}
+      - ALPHA_VANTAGE_API_KEY=${ALPHA_VANTAGE_API_KEY:-}
+      - MARKETAUX_API_KEY=${MARKETAUX_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-}
+      - PORTFOLIO_NAME=${PORTFOLIO_NAME:-}
+      - EMAIL_FROM=${EMAIL_FROM:-}
+      - EMAIL_TO=${EMAIL_TO:-}
+    volumes:
+      - ./scripts/telegram-dedicated-poller.js:/app/telegram-dedicated-poller.js:ro
+      - ./scripts/lib:/app/lib:ro
+      - ./files:/data
+    working_dir: /app
+    command: ["node", "telegram-dedicated-poller.js"]
+    env_file:
+      - .env
+    profiles:
+      - telegram-dedicated
+
+  telegram-bot-resume:
+    image: node:20-alpine
+    restart: unless-stopped
+    depends_on:
+      n8n:
+        condition: service_healthy
+    environment:
+      - NODE_OPTIONS=--dns-result-order=ipv4first
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_RESUME:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - TELEGRAM_POLLER_KIND=resume
+      - N8N_INTERNAL_URL=${N8N_INTERNAL_URL:-http://n8n:5678}
+      - N8N_TELEGRAM_WEBHOOK=${N8N_TELEGRAM_WEBHOOK_RESUME:-}
+      - TELEGRAM_DATA_DIR=/data
+      - TELEGRAM_OFFSET_FILE=/data/telegram-poller-offset-resume.json
+      - TELEGRAM_POLL_TIMEOUT=${TELEGRAM_POLL_TIMEOUT:-30}
+      - TELEGRAM_RESUME_TIMEOUT_MS=${TELEGRAM_RESUME_TIMEOUT_MS:-600000}
+      - TELEGRAM_WEBHOOK_TIMEOUT_MS=${TELEGRAM_WEBHOOK_TIMEOUT_MS:-300000}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-}
+      - RESUMES_FOLDER=${RESUMES_FOLDER:-/files/resumes}
+      - EMAIL_FROM=${EMAIL_FROM:-}
+      - EMAIL_TO=${EMAIL_TO:-}
+    volumes:
+      - ./scripts/telegram-dedicated-poller.js:/app/telegram-dedicated-poller.js:ro
+      - ./scripts/lib:/app/lib:ro
+      - ./files:/data
+    working_dir: /app
+    command: ["node", "telegram-dedicated-poller.js"]
+    env_file:
+      - .env
+    profiles:
+      - telegram-dedicated
+
+  telegram-bot-hr:
+    image: node:20-alpine
+    restart: unless-stopped
+    depends_on:
+      n8n:
+        condition: service_healthy
+    environment:
+      - NODE_OPTIONS=--dns-result-order=ipv4first
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN_HR:-}
+      # Empty TELEGRAM_CHAT_ID_HR = public bot (any user). Set one id to restrict.
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID_HR:-}
+      - TELEGRAM_POLLER_KIND=hr
+      - N8N_INTERNAL_URL=${N8N_INTERNAL_URL:-http://n8n:5678}
+      - N8N_TELEGRAM_WEBHOOK=${N8N_TELEGRAM_WEBHOOK_HR:-}
+      - TELEGRAM_DATA_DIR=/data
+      - TELEGRAM_OFFSET_FILE=/data/telegram-poller-offset-hr.json
+      - TELEGRAM_POLL_TIMEOUT=${TELEGRAM_POLL_TIMEOUT:-30}
+      - TELEGRAM_WEBHOOK_TIMEOUT_MS=${TELEGRAM_WEBHOOK_TIMEOUT_MS:-300000}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-}
+      - EMAIL_FROM=${EMAIL_FROM:-}
+      - EMAIL_TO=${EMAIL_TO:-}
+    volumes:
+      - ./scripts/telegram-dedicated-poller.js:/app/telegram-dedicated-poller.js:ro
+      - ./scripts/lib:/app/lib:ro
+      - ./files:/data
+    working_dir: /app
+    command: ["node", "telegram-dedicated-poller.js"]
+    env_file:
+      - .env
+    profiles:
+      - telegram-dedicated
+
+  telegram-bot-drive-rag:
+    image: node:20-alpine
+    restart: unless-stopped
+    depends_on:
+      n8n:
+        condition: service_healthy
+    environment:
+      - NODE_OPTIONS=--dns-result-order=ipv4first
+      - TELEGRAM_BOT_TOKEN=
+      - TELEGRAM_BOT_TOKEN_DRIVE_RAG=${TELEGRAM_BOT_TOKEN_DRIVE_RAG:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - N8N_INTERNAL_URL=${N8N_INTERNAL_URL:-http://n8n:5678}
+      - N8N_INGEST_WEBHOOK=${N8N_INGEST_WEBHOOK:-}
+      - RAG_WEBHOOK_URL=${RAG_WEBHOOK_URL:-}
+      - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
+      - GOOGLE_SERVICE_ACCOUNT_FILE=${GOOGLE_SERVICE_ACCOUNT_FILE:-/data/service-account-key.json}
+      - GOOGLE_DRIVE_RECURSIVE=${GOOGLE_DRIVE_RECURSIVE:-true}
+      - TELEGRAM_DATA_DIR=/data
+      - DRIVE_RAG_SESSIONS_FILE=/data/drive-rag-sessions.json
+      - TELEGRAM_OFFSET_FILE=/data/telegram-poller-offset-drive-rag.json
+      - TELEGRAM_POLL_TIMEOUT=${TELEGRAM_POLL_TIMEOUT:-30}
+      - TELEGRAM_WEBHOOK_TIMEOUT_MS=${TELEGRAM_WEBHOOK_TIMEOUT_MS:-300000}
+      - TELEGRAM_DRIVE_RAG_WELCOME=${TELEGRAM_DRIVE_RAG_WELCOME:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-}
+      - EMBEDDING_DIMENSIONS=${EMBEDDING_DIMENSIONS:-1536}
+      - OCR_VISION_MODEL=${OCR_VISION_MODEL:-}
+      - MAX_PDF_OCR_IMAGES=${MAX_PDF_OCR_IMAGES:-25}
+      - PDF_OCR_MAX_TOKENS=${PDF_OCR_MAX_TOKENS:-700}
+      - FILES_MOUNT_ROOT=/data
+    volumes:
+      - ./scripts/drive-rag-bot.js:/app/drive-rag-bot.js:ro
+      - ./scripts/lib:/app/lib:ro
+      - ./files:/data
+    working_dir: /app
+    command: ["node", "drive-rag-bot.js"]
+    env_file:
+      - .env
+    profiles:
+      - telegram-dedicated
+
+  google-drive-sync:
+    image: node:20-alpine
+    restart: unless-stopped
+    depends_on:
+      - n8n
+    environment:
+      - GOOGLE_DRIVE_FOLDER_ID=${GOOGLE_DRIVE_FOLDER_ID:-}
+      - GOOGLE_DRIVE_RECURSIVE=${GOOGLE_DRIVE_RECURSIVE:-true}
+      - GOOGLE_SERVICE_ACCOUNT_FILE=${GOOGLE_SERVICE_ACCOUNT_FILE:-/data/service-account-key.json}
+      - GOOGLE_DRIVE_POLL_INTERVAL_SECONDS=${GOOGLE_DRIVE_POLL_INTERVAL_SECONDS:-30}
+      - GOOGLE_DRIVE_STATE_FILE=/data/google-drive-sync-state.json
+      - GOOGLE_DRIVE_DOWNLOAD_DIR=/data/knowledge/google-drive
+      - FILES_MOUNT_ROOT=/data
+      - N8N_INTERNAL_URL=${N8N_INTERNAL_URL:-http://n8n:5678}
+      - N8N_INGEST_WEBHOOK=${N8N_INGEST_WEBHOOK:-}
+      - QDRANT_URL=${QDRANT_URL:-http://qdrant:6333}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-}
+      - OCR_VISION_MODEL=${OCR_VISION_MODEL:-}
+      - MAX_PDF_OCR_IMAGES=${MAX_PDF_OCR_IMAGES:-25}
+      - PDF_OCR_MAX_TOKENS=${PDF_OCR_MAX_TOKENS:-700}
+    volumes:
+      - ./scripts/google-drive-sync.js:/app/google-drive-sync.js:ro
+      - ./scripts/lib:/app/lib:ro
+      - ./files:/data
+    working_dir: /app
+    command: ["node", "google-drive-sync.js"]
+    env_file:
+      - .env
+
+volumes:
+  n8n_data:
+  qdrant_data:

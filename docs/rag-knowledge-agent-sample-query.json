@@ -1,0 +1,12 @@
+{
+  "action": "query",
+  "question": "What integrations does the platform support?",
+  "collection_name": "knowledge_base",
+  "top_k": 5,
+  "rag_score_threshold": 0.35,
+  "enable_fallback": true,
+  "enable_web_search": true,
+  "web_search_provider": "duckduckgo",
+  "notify_email": false,
+  "notify_telegram": false
+}

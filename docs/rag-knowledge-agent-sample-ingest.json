@@ -1,0 +1,8 @@
+{
+  "action": "ingest",
+  "document_title": "Product Guide",
+  "document_file_path": "/files/knowledge/sample-product-guide.txt",
+  "collection_name": "knowledge_base",
+  "chunk_size": 800,
+  "chunk_overlap": 150
+}

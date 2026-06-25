@@ -1,0 +1,1189 @@
+{
+  "name": "Resume Analysis Agent",
+  "nodes": [
+    {
+      "id": "r1000000-0001-4000-8000-000000000001",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1220,
+        200
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "resume-analysis-agent",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "webhookId": "resume-analysis-agent-webhook"
+    },
+    {
+      "id": "r1000000-0002-4000-8000-000000000002",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1220,
+        420
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "r1000000-0003-4000-8000-000000000003",
+      "name": "Set: Sample Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -980,
+        420
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"scan_resumes_folder\": false,\n  \"resume_file_paths\": [\n    \"/files/resumes/Athiban Thangaraja D.pdf\",\n    \"/files/resumes/Kumail Rizvi.pdf\",\n    \"/files/resumes/Parag Durafe.pdf\",\n    \"/files/resumes/UTKARSH SAXENA.pdf\",\n    \"/files/resumes/Muskan_Resume.pdf\"\n  ],\n  \"job_titles\": [\n    {\n      \"title\": \"Software Engineer\",\n      \"required_skills\": [\n        \"Python\",\n        \"JavaScript\",\n        \"API Integration\",\n        \"PostgreSQL\"\n      ],\n      \"preferred_skills\": [\n        \"Docker\",\n        \"AWS\"\n      ],\n      \"min_experience_years\": 3,\n      \"job_description\": \"Build backend services and integrations.\"\n    },\n    {\n      \"title\": \"Data Analyst\",\n      \"required_skills\": [\n        \"SQL\",\n        \"Python\",\n        \"Excel\"\n      ],\n      \"preferred_skills\": [\n        \"Tableau\"\n      ],\n      \"min_experience_years\": 2,\n      \"job_description\": \"Analyze data and produce insights.\"\n    },\n    {\n      \"title\": \"DevOps Engineer\",\n      \"required_skills\": [\n        \"Docker\",\n        \"CI/CD\",\n        \"Linux\",\n        \"AWS\"\n      ],\n      \"preferred_skills\": [\n        \"Kubernetes\"\n      ],\n      \"min_experience_years\": 3,\n      \"job_description\": \"Manage CI/CD and cloud infrastructure.\"\n    },\n    {\n      \"title\": \"Product Manager\",\n      \"required_skills\": [\n        \"Agile\",\n        \"Roadmapping\"\n      ],\n      \"preferred_skills\": [\n        \"Analytics\"\n      ],\n      \"min_experience_years\": 4,\n      \"job_description\": \"Own product strategy and delivery.\"\n    }\n  ],\n  \"use_resume_job_title\": false,\n  \"candidate_email\": \"shivamskr151@gmail.com, muskan.betla@gmail.com\",\n  \"candidate_emails\": [\n    \"shivamskr151@gmail.com\",\n    \"muskan.betla@gmail.com\"\n  ],\n  \"openrouter_model\": \"openai/gpt-4o-mini\",\n  \"sender_email\": \"information@variphi.com\",\n  \"notify_email\": true,\n  \"notify_telegram\": true\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "r1000000-0004-4000-8000-000000000004",
+      "name": "Merge Triggers",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -740,
+        300
+      ],
+      "parameters": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "r1000000-0005-4000-8000-000000000005",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -500,
+        300
+      ],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "candidate_name",
+              "name": "candidate_name",
+              "value": "={{ ($json.body?.candidate_name || $json.candidate_name || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "candidate_email",
+              "name": "candidate_email",
+              "value": "={{ ($json.body?.candidate_email || $json.candidate_email || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "candidate_emails",
+              "name": "candidate_emails",
+              "value": "={{ $json.body?.candidate_emails || $json.candidate_emails || [] }}",
+              "type": "array"
+            },
+            {
+              "id": "resume_filename",
+              "name": "resume_filename",
+              "value": "={{ ($json.body?.resume_filename || $json.resume_filename || 'resume.txt').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "resume_file_path",
+              "name": "resume_file_path",
+              "value": "={{ ($json.body?.resume_file_path || $json.resume_file_path || $json.existing_resume_file || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "resume_mime_type",
+              "name": "resume_mime_type",
+              "value": "={{ ($json.body?.resume_mime_type || $json.resume_mime_type || 'text/plain').toString().trim().toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "resume_base64",
+              "name": "resume_base64",
+              "value": "={{ ($json.body?.resume_base64 || $json.resume_base64 || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "resume_text",
+              "name": "resume_text",
+              "value": "={{ ($json.body?.resume_text || $json.resume_text || '').toString() }}",
+              "type": "string"
+            },
+            {
+              "id": "job_title",
+              "name": "job_title",
+              "value": "={{ ($json.body?.job_title || $json.job_title || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "job_titles",
+              "name": "job_titles",
+              "value": "={{ $json.body?.job_titles || $json.job_titles || [] }}",
+              "type": "array"
+            },
+            {
+              "id": "job_description",
+              "name": "job_description",
+              "value": "={{ ($json.body?.job_description || $json.job_description || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "required_skills",
+              "name": "required_skills",
+              "value": "={{ $json.body?.required_skills || $json.required_skills || [] }}",
+              "type": "array"
+            },
+            {
+              "id": "preferred_skills",
+              "name": "preferred_skills",
+              "value": "={{ $json.body?.preferred_skills || $json.preferred_skills || [] }}",
+              "type": "array"
+            },
+            {
+              "id": "min_experience_years",
+              "name": "min_experience_years",
+              "value": "={{ Number($json.body?.min_experience_years || $json.min_experience_years || 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "openrouter_api_key",
+              "name": "openrouter_api_key",
+              "value": "={{ ($json.body?.openai_api_key || $json.openai_api_key || $json.body?.openrouter_api_key || $json.openrouter_api_key || $env.OPENAI_API_KEY || $env.OPENROUTER_API_KEY || '').toString().trim().replace(/^Bearer\\s+/i, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "openrouter_model",
+              "name": "openrouter_model",
+              "value": "={{ ($json.body?.openai_model || $json.openai_model || $json.body?.openrouter_model || $json.openrouter_model || $env.OPENAI_MODEL || 'gpt-4o-mini').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "sender_email",
+              "name": "sender_email",
+              "value": "={{ ($json.body?.sender_email || $json.sender_email || 'information@variphi.com').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "notify_email",
+              "name": "notify_email",
+              "value": "={{ Boolean($json.body?.notify_email ?? $json.notify_email ?? false) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "notify_telegram",
+              "name": "notify_telegram",
+              "value": "={{ Boolean($json.body?.notify_telegram ?? $json.notify_telegram ?? true) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "telegram_bot_token",
+              "name": "telegram_bot_token",
+              "value": "={{ ($json.body?.telegram_bot_token || $json.telegram_bot_token || $env.TELEGRAM_BOT_TOKEN || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "telegram_chat_id",
+              "name": "telegram_chat_id",
+              "value": "={{ ($json.body?.telegram_chat_id || $json.telegram_chat_id || $env.TELEGRAM_CHAT_ID || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "use_resume_job_title",
+              "name": "use_resume_job_title",
+              "value": "={{ Boolean($json.body?.use_resume_job_title ?? $json.use_resume_job_title ?? true) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "resumes",
+              "name": "resumes",
+              "value": "={{ $json.body?.resumes || $json.resumes || [] }}",
+              "type": "array"
+            },
+            {
+              "id": "resume_file_paths",
+              "name": "resume_file_paths",
+              "value": "={{ $json.body?.resume_file_paths || $json.resume_file_paths || [] }}",
+              "type": "array"
+            },
+            {
+              "id": "scan_resumes_folder",
+              "name": "scan_resumes_folder",
+              "value": "={{ Boolean($json.body?.scan_resumes_folder ?? $json.scan_resumes_folder ?? false) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "resumes_folder",
+              "name": "resumes_folder",
+              "value": "={{ ($json.body?.resumes_folder || $json.resumes_folder || \"/files/resumes\").toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "jobs",
+              "name": "jobs",
+              "value": "={{ $json.body?.jobs || $json.jobs || [] }}",
+              "type": "array"
+            },
+            {
+              "id": "openai_api_key",
+              "name": "openai_api_key",
+              "value": "={{ ($json.body?.openai_api_key || $json.openai_api_key || $json.body?.openrouter_api_key || $json.openrouter_api_key || $env.OPENAI_API_KEY || $env.OPENROUTER_API_KEY || '').toString().trim().replace(/^Bearer\\s+/i, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "openai_model",
+              "name": "openai_model",
+              "value": "={{ ($json.body?.openai_model || $json.openai_model || $json.body?.openrouter_model || $json.openrouter_model || $env.OPENAI_MODEL || 'gpt-4o-mini').toString().trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "r1000000-0006-4000-8000-000000000006",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -260,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst DEFAULT_EMAILS = ['shivamskr151@gmail.com', 'muskan.betla@gmail.com'];\nconst BATCH_RUN_ID = `batch_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;\n\nconst parseList = (raw) => {\n  if (Array.isArray(raw)) return raw.map((e) => String(e).trim()).filter(Boolean);\n  const str = String(raw || '').trim();\n  if (!str) return [];\n  return str.split(/[,;|]/).map((e) => e.trim()).filter(Boolean);\n};\n\nconst normalizeResumePath = (raw) => {\n  let p = String(raw || '').trim();\n  if (!p) return '';\n  if (p.startsWith('./files/')) p = p.replace('./files', '/files');\n  if (p.startsWith('files/resumes/')) p = `/files/resumes/${p.split('files/resumes/')[1]}`;\n  if (!p.startsWith('/files/')) {\n    if (p.startsWith('resumes/')) p = `/files/${p}`;\n    else p = `/files/resumes/${p.replace(/^\\/+/, '')}`;\n  }\n  return p;\n};\n\nconst normalizeJobTitles = (raw, root) => {\n  const list = Array.isArray(raw) ? raw : parseList(raw);\n  return list.map((entry) => {\n    if (typeof entry === 'string') {\n      return {\n        title: entry.trim(),\n        required_skills: root.required_skills || [],\n        preferred_skills: root.preferred_skills || [],\n        min_experience_years: root.min_experience_years || 0,\n        job_description: root.job_description || '',\n      };\n    }\n    if (entry && typeof entry === 'object') {\n      return {\n        title: String(entry.title || entry.job_title || '').trim(),\n        required_skills: entry.required_skills || root.required_skills || [],\n        preferred_skills: entry.preferred_skills || root.preferred_skills || [],\n        min_experience_years: Number(entry.min_experience_years ?? root.min_experience_years ?? 0),\n        job_description: String(entry.job_description || root.job_description || '').trim(),\n      };\n    }\n    return null;\n  }).filter((j) => j && j.title);\n};\n\nconst root = item;\nlet emails = parseList(root.candidate_emails);\nif (!emails.length) emails = parseList(root.candidate_email);\nif (!emails.length) emails = [...DEFAULT_EMAILS];\n\nconst jobTitles = normalizeJobTitles(root.job_titles || root.jobs || [], root);\nif (String(root.job_title || '').trim() && !jobTitles.length) {\n  jobTitles.push(...normalizeJobTitles([{ title: root.job_title }], root));\n}\n\nconst buildResumeEntry = (entry, idx) => {\n  if (typeof entry === 'string') {\n    const p = normalizeResumePath(entry);\n    const base = p.split('/').pop() || `resume_${idx + 1}.pdf`;\n    const name = base.replace(/\\.(pdf|txt)$/i, '').replace(/[_-]+/g, ' ').trim();\n    return { candidate_name: name, candidate_email: '', resume_file_path: p, resume_filename: base };\n  }\n  const p = normalizeResumePath(entry.resume_file_path || entry.path || entry.file || '');\n  const base = p.split('/').pop() || entry.resume_filename || `resume_${idx + 1}.pdf`;\n  const name = entry.candidate_name || base.replace(/\\.(pdf|txt)$/i, '').replace(/[_-]+/g, ' ').trim();\n  return {\n    candidate_name: name,\n    candidate_email: entry.candidate_email || entry.email || '',\n    candidate_emails: entry.candidate_emails || [],\n    resume_file_path: p,\n    resume_filename: entry.resume_filename || base,\n    resume_text: entry.resume_text || '',\n    resume_base64: entry.resume_base64 || '',\n    resume_mime_type: entry.resume_mime_type || '',\n  };\n};\n\nlet resumeEntries = [];\nif (Array.isArray(root.resumes) && root.resumes.length) {\n  resumeEntries = root.resumes.map(buildResumeEntry);\n} else if (Array.isArray(root.resume_file_paths) && root.resume_file_paths.length) {\n  resumeEntries = root.resume_file_paths.map(buildResumeEntry);\n} else if (root.scan_resumes_folder) {\n  if (!root.allow_batch_scan) {\n    throw new Error('Batch folder scan is disabled. Send a PDF directly or use /scan <filename>.');\n  }\n  const fs = require('fs');\n  const dir = String(root.resumes_folder || '/files/resumes').trim();\n  const files = fs.readdirSync(dir)\n    .filter((f) => /\\.(pdf|txt)$/i.test(f) && !/^resume_\\d+_/i.test(f))\n    .sort();\n  resumeEntries = files.map((f) => buildResumeEntry(`${dir}/${f}`));\n} else if (normalizeResumePath(root.resume_file_path || root.existing_resume_file || '')) {\n  resumeEntries = [buildResumeEntry({\n    candidate_name: root.candidate_name,\n    candidate_email: root.candidate_email,\n    candidate_emails: root.candidate_emails,\n    resume_file_path: root.resume_file_path,\n    resume_filename: root.resume_filename,\n    resume_text: root.resume_text,\n    resume_base64: root.resume_base64,\n    resume_mime_type: root.resume_mime_type,\n  })];\n} else if (String(root.resume_text || '').trim() || String(root.resume_base64 || '').trim()) {\n  resumeEntries = [{\n    candidate_name: root.candidate_name || 'Candidate',\n    candidate_email: root.candidate_email || '',\n    candidate_emails: root.candidate_emails || [],\n    resume_filename: root.resume_filename || 'resume.txt',\n    resume_text: root.resume_text || '',\n    resume_base64: root.resume_base64 || '',\n    resume_mime_type: root.resume_mime_type || 'text/plain',\n  }];\n}\n\nif (!resumeEntries.length) {\n  throw new Error('Provide resumes, resume_file_paths, resume_file_path, resume_text, or set scan_resumes_folder=true');\n}\n\nif (!root.allow_batch_scan && resumeEntries.length > 1) {\n  throw new Error('Only one resume per request. Send a PDF directly or use /scan <filename>.');\n}\n\nconst useResumeJobTitle = root.use_resume_job_title !== false && jobTitles.length === 0;\nif (!useResumeJobTitle && !jobTitles.length) {\n  throw new Error('Provide job_titles array or set use_resume_job_title=true');\n}\n\nconst shared = {\n  ...root,\n  batch_run_id: BATCH_RUN_ID,\n  candidate_emails: emails,\n  candidate_email: emails.join(', '),\n  job_titles: jobTitles,\n  job_title: jobTitles[0]?.title || root.job_title || '',\n  use_resume_job_title: useResumeJobTitle,\n  match_all_job_titles: jobTitles.length > 0,\n  batch_size: resumeEntries.length,\n};\n\nif (!String(shared.job_description || '').trim()) {\n  shared.job_description = jobTitles.length\n    ? 'Evaluate candidate fit against all open roles and assign the best match.'\n    : 'Evaluate candidate fit for the exact job title found on the resume.';\n}\n\n\nreturn resumeEntries.map((entry, i) => {\n  let entryEmails = parseList(entry.candidate_emails);\n  if (!entryEmails.length) entryEmails = parseList(entry.candidate_email);\n  if (!entryEmails.length) entryEmails = emails;\n  const hasPath = Boolean(normalizeResumePath(entry.resume_file_path || ''));\n  return {\n    json: {\n      ...shared,\n      ...entry,\n      candidate_emails: entryEmails,\n      candidate_email: entryEmails.join(', '),\n      resume_file_path: hasPath ? normalizeResumePath(entry.resume_file_path) : entry.resume_file_path,\n      resume_index: i + 1,\n      run_id: `resume_${Date.now()}_${Math.random().toString(16).slice(2, 8)}_${i}`,\n      processed_at: new Date().toISOString(),\n    },\n  };\n});"
+      }
+    },
+    {
+      "id": "r1000000-0031-4000-8000-000000000031",
+      "name": "Prepare Resume File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        380
+      ],
+      "parameters": {
+        "jsCode": "const item = $json;\nconst RESUME_DIR = '/files/resumes';\nconst fn = String(item.resume_filename || '').toLowerCase();\nlet ext = fn.endsWith('.pdf') ? 'pdf' : fn.endsWith('.txt') ? 'txt' : 'txt';\nif (item.resume_mime_type === 'application/pdf') ext = 'pdf';\nlet buffer;\nif (String(item.resume_text || '').trim()) buffer = Buffer.from(String(item.resume_text), 'utf8');\nelse {\n  const b64 = String(item.resume_base64 || '').trim();\n  if (!b64) throw new Error('No resume content to save');\n  buffer = Buffer.from(b64, 'base64');\n}\nconst mimeType = ext === 'pdf' ? 'application/pdf' : 'text/plain';\nconst fileName = `${item.run_id}.${ext}`;\nconst resume_file_path = `${RESUME_DIR}/${fileName}`;\nreturn { json: { ...item, resume_file_path, resume_file_ext: ext, resume_storage: { directory: RESUME_DIR, saved_file: resume_file_path, host_folder: './files/resumes', host_file: `./files/resumes/${fileName}` } }, binary: { data: { data: buffer.toString('base64'), mimeType, fileName } } };",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0032-4000-8000-000000000032",
+      "name": "Write Resume File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        280,
+        380
+      ],
+      "parameters": {
+        "fileName": "={{ $json.resume_file_path }}",
+        "dataPropertyName": "data",
+        "options": {}
+      }
+    },
+    {
+      "id": "r1000000-0033-4000-8000-000000000033",
+      "name": "Read Resume File",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        500,
+        300
+      ],
+      "parameters": {
+        "filePath": "={{ $json.resume_file_path }}",
+        "dataPropertyName": "data",
+        "options": {}
+      }
+    },
+    {
+      "id": "r1000000-0034-4000-8000-000000000034",
+      "name": "Is PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "is-pdf",
+              "leftValue": "={{ $json.resume_file_ext }}",
+              "rightValue": "pdf",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "r1000000-0035-4000-8000-000000000035",
+      "name": "Extract PDF Text",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        860,
+        200
+      ],
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "data",
+        "options": {}
+      }
+    },
+    {
+      "id": "r1000000-0036-4000-8000-000000000036",
+      "name": "Restore PDF Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1080,
+        200
+      ],
+      "parameters": {
+        "jsCode": "const ctx = $('Restore Meta After Read').item.json;\nconst row = $json;\nconst text = String(row.text || row.data || row.content || '').trim();\nif (!text) throw new Error('No text extracted from saved PDF file');\nreturn { json: { ...ctx, extracted_resume_text: text, extraction_source: 'saved_pdf_file', analyzed_from: ctx.resume_file_path } };",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0037-4000-8000-000000000037",
+      "name": "Extract TXT From File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        400
+      ],
+      "parameters": {
+        "jsCode": "const ctx = $('Restore Meta After Read').item.json;\nconst buffer = await this.helpers.getBinaryDataBuffer(0, 'data');\nconst text = buffer.toString('utf8').trim();\nif (!text) throw new Error('Saved TXT file is empty');\nreturn { json: { ...ctx, extracted_resume_text: text, extraction_source: 'saved_txt_file', analyzed_from: ctx.resume_file_path } };",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0008-4000-8000-000000000008",
+      "name": "Clean & Structure Resume",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const item = $json;\nconst text = String(item.extracted_resume_text || '');\n\nconst emailMatch = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i);\nconst phoneMatch = text.match(/(\\+?\\d[\\d\\s().-]{7,}\\d)/);\nconst yearsMatch = text.match(/(\\d+)\\+?\\s*years?/i);\n\nconst lines = text.split(/\\n+/).map((x) => x.trim()).filter(Boolean);\nconst summary = lines.slice(0, 5).join(' ').slice(0, 600);\n\nreturn { json: {\n    ...item,\n    structured_resume: {\n      candidate_name: item.candidate_name || null,\n      candidate_email: item.candidate_email || (emailMatch ? emailMatch[0] : null),\n      candidate_phone: phoneMatch ? phoneMatch[0] : null,\n      inferred_experience_years: yearsMatch ? Number(yearsMatch[1]) : null,\n      resume_summary: summary,\n      raw_resume_text: text,\n      structured_at: new Date().toISOString()\n    }\n  }\n};\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0009-4000-8000-000000000009",
+      "name": "AI Resume Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        300
+      ],
+      "parameters": {
+        "jsCode": "function cleanKey(key) {\n  return String(key || '').trim().replace(/^Bearer\\s+/i, '');\n}\nfunction isOpenRouterKey(key) {\n  return /^sk-or-/i.test(cleanKey(key));\n}\nfunction chatCompletionsUrl(apiKey) {\n  return isOpenRouterKey(apiKey)\n    ? 'https://openrouter.ai/api/v1/chat/completions'\n    : 'https://api.openai.com/v1/chat/completions';\n}\nfunction normalizeModel(model, apiKey) {\n  const m = String(model || $env.OPENAI_MODEL || 'gpt-4o-mini').trim();\n  if (isOpenRouterKey(apiKey)) {\n    return m.includes('/') ? m : 'openai/' + m.replace(/^openai\\//, '');\n  }\n  return m.replace(/^openai\\//, '');\n}\nasync function getAiApiKey(payload) {\n  let key = cleanKey(payload?.openai_api_key || payload?.openrouter_api_key);\n  if (!key) key = cleanKey($env.OPENAI_API_KEY || $env.OPENROUTER_API_KEY || '');\n  if (!key) {\n    try {\n      const cred = await this.getCredentials('httpHeaderAuth');\n      key = cleanKey(cred.value || cred.headerValue);\n    } catch (e) {}\n  }\n  if (!key) throw new Error('Missing OPENAI_API_KEY. Set in .env or pass openai_api_key in the webhook body.');\n  return key;\n}\n\nconst item = $json;\nconst apiKey = await getAiApiKey.call(this, item);\nconst model = normalizeModel(item.openai_model || item.openrouter_model, apiKey);\nconst jobTitle = String(item.job_title || item.resume_job_title || '').trim();\nif (!jobTitle) throw new Error('Missing job title for analysis');\n\nconst systemPrompt = 'You are an ATS assistant. Analyze the candidate against the assigned job title (best match from open roles or resume title). Return strict JSON with keys: ats_score (0-100), matched_skills (array), missing_skills (array), extracted_skills (array), experience_analysis { total_years, relevant_years, level, strengths, gaps }, job_match_score (0-100), title_alignment { exact_title, aligned (boolean), reason }, recommendation { verdict, confidence, reason }, report_summary.';\nconst userPrompt = `Assigned Job Title: ${jobTitle}\nOther titles on resume: ${(item.resume_all_job_titles || []).join(' | ')}\nJob Description context: ${item.job_description || 'N/A'}\nRequired Skills: ${(item.required_skills || []).join(', ') || 'Infer from resume and title'}\nPreferred Skills: ${(item.preferred_skills || []).join(', ') || 'None'}\nMinimum Experience Years: ${item.min_experience_years || 0}\n\nScore how well this resume fits the role: \"${jobTitle}\".\n\nResume Text:\n${item.structured_resume?.raw_resume_text || ''}`;\n\nconst response = await this.helpers.httpRequest({\n  method: 'POST',\n  url: chatCompletionsUrl(apiKey),\n  headers: {\n    Authorization: `Bearer ${apiKey}`,\n    'Content-Type': 'application/json',\n    'X-Title': 'Resume Analysis Agent'\n  },\n  body: {\n    model,\n    temperature: 0.2,\n    response_format: { type: 'json_object' },\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: userPrompt }\n    ]\n  },\n  json: true,\n  timeout: 60000\n});\n\nconst raw = response.choices?.[0]?.message?.content;\nconst analysis = typeof raw === 'string' ? JSON.parse(raw) : raw;\n\nreturn { json: {\n    ...item,\n    ai_analysis: {\n      ...analysis,\n      model: response.model || model,\n      analyzed_at: new Date().toISOString()\n    }\n  }\n};\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0010-4000-8000-000000000010",
+      "name": "ATS Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        180
+      ],
+      "parameters": {
+        "jsCode": "const item = $json;\nreturn { json: {\n    ...item,\n    ats_result: {\n      score: Number(item.ai_analysis?.ats_score || 0),\n      matched_skills: item.ai_analysis?.matched_skills || [],\n      missing_skills: item.ai_analysis?.missing_skills || []\n    }\n  }\n};\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0011-4000-8000-000000000011",
+      "name": "Skill Extraction",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        940,
+        180
+      ],
+      "parameters": {
+        "jsCode": "const item = $json;\nreturn { json: {\n    ...item,\n    skill_extraction: {\n      extracted_skills: item.ai_analysis?.extracted_skills || [],\n      matched_skills: item.ai_analysis?.matched_skills || [],\n      missing_skills: item.ai_analysis?.missing_skills || []\n    }\n  }\n};\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0012-4000-8000-000000000012",
+      "name": "Experience Analysis",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1180,
+        180
+      ],
+      "parameters": {
+        "jsCode": "const item = $json;\nreturn { json: {\n    ...item,\n    experience_result: item.ai_analysis?.experience_analysis || {}\n  }\n};\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0013-4000-8000-000000000013",
+      "name": "Job Matching Engine",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1420,
+        180
+      ],
+      "parameters": {
+        "jsCode": "const item = $json;\nconst aiJobMatch = Number(item.ai_analysis?.job_match_score || 0);\nconst ats = Number(item.ats_result?.score || 0);\nconst experienceYears = Number(item.experience_result?.relevant_years || item.experience_result?.total_years || 0);\nconst experienceRatio = item.min_experience_years > 0 ? Math.min(100, (experienceYears / item.min_experience_years) * 100) : 100;\nconst weightedMatch = Math.round((aiJobMatch * 0.5) + (ats * 0.3) + (experienceRatio * 0.2));\n\nreturn { json: {\n    ...item,\n    job_match: {\n      ai_job_match_score: aiJobMatch,\n      weighted_match_score: weightedMatch,\n      experience_ratio_score: Math.round(experienceRatio),\n      matched_skills_count: (item.skill_extraction?.matched_skills || []).length,\n      missing_skills_count: (item.skill_extraction?.missing_skills || []).length\n    }\n  }\n};\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0014-4000-8000-000000000014",
+      "name": "AI Recommendation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1660,
+        180
+      ],
+      "parameters": {
+        "jsCode": "const item = $json;\nconst score = Number(item.job_match?.weighted_match_score || 0);\nlet recommendation = 'Reject';\nif (score >= 80) recommendation = 'Strong Shortlist';\nelse if (score >= 65) recommendation = 'Shortlist';\nelse if (score >= 50) recommendation = 'Review';\n\nreturn { json: {\n    ...item,\n    recommendation: {\n      label: item.ai_analysis?.recommendation?.verdict || recommendation,\n      confidence: Number(item.ai_analysis?.recommendation?.confidence || 0),\n      reason: item.ai_analysis?.recommendation?.reason || 'Generated from ATS, skill, and experience signals.'\n    }\n  }\n};\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0015-4000-8000-000000000015",
+      "name": "Generate Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1900,
+        180
+      ],
+      "parameters": {
+        "jsCode": "const item = $json;\nconst recommendedTitle = item.job_title_ranking?.categorized_under || item.job_title;\nconst report = {\n  run_id: item.run_id,\n  batch_run_id: item.batch_run_id || null,\n  generated_at: new Date().toISOString(),\n  candidate: {\n    name: item.candidate_name || item.structured_resume?.candidate_name || 'Unknown',\n    email: item.candidate_email || item.structured_resume?.candidate_email || null,\n  },\n  recommended_job_title: recommendedTitle,\n  job_title_ranking: item.job_title_ranking || null,\n  job: {\n    title: item.job_title,\n    source: item.matched_against || 'best_job_title',\n    resume_job_title: item.resume_job_title || item.job_title,\n    all_titles_on_resume: item.resume_all_job_titles || [],\n    title_alignment: item.ai_analysis?.title_alignment || {},\n    min_experience_years: item.min_experience_years,\n    required_skills: item.required_skills || [],\n    preferred_skills: item.preferred_skills || [],\n  },\n  ats_score: item.ats_result || {},\n  skill_extraction: item.skill_extraction || {},\n  experience_analysis: item.experience_result || {},\n  job_match: item.job_match || {},\n  recommendation: item.recommendation || {},\n  ai_summary: item.ai_analysis?.report_summary || '',\n};\n\nconst rankingLine = item.job_title_ranking?.best_match\n  ? `Recommended Job Title: ${item.job_title_ranking.best_match.title} (score ${item.job_title_ranking.best_match.match_score})`\n  : `Job Title: ${report.job.title}`;\n\nconst text = [\n  'Resume Analysis Report',\n  `Candidate: ${report.candidate.name}`,\n  rankingLine,\n  `Categorized Under: ${recommendedTitle}`,\n  `ATS Score: ${report.ats_score.score ?? 'n/a'}`,\n  `Weighted Match Score: ${report.job_match.weighted_match_score ?? 'n/a'}`,\n  `Recommendation: ${report.recommendation.label || 'n/a'}`,\n  `Reasoning: ${item.job_title_ranking?.best_match?.reasoning || report.recommendation.reason || 'n/a'}`,\n  `Summary: ${report.ai_summary || 'n/a'}`,\n].join('\\n');\n\nreturn { json: { ...item, report, report_text: text } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0022-4000-8000-000000000022",
+      "name": "Telegram Delivery",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2620,
+        60
+      ],
+      "parameters": {
+        "jsCode": "const item = $json;\nconst token = String(item.telegram_bot_token || '').trim();\nconst chatId = String(item.telegram_chat_id || '').trim();\nlet telegram_delivery = { status: 'skipped', reason: 'disabled_or_missing_credentials' };\n\nif (item.notify_telegram && token && chatId) {\n  const text = String(item.report_text || '').trim();\n  if (!text) {\n    telegram_delivery = { status: 'skipped', reason: 'empty_message' };\n  } else {\n    try {\n      const resp = await this.helpers.httpRequest({\n        method: 'POST',\n        url: `https://api.telegram.org/bot${token}/sendMessage`,\n        body: { chat_id: chatId, text },\n        json: true,\n        timeout: 30000\n      });\n      if (!resp?.ok) {\n        throw new Error(resp?.description || 'Telegram API returned ok:false');\n      }\n      telegram_delivery = {\n        status: 'sent',\n        message_id: resp.result?.message_id || null,\n        chat_id: chatId\n      };\n    } catch (err) {\n      telegram_delivery = { status: 'failed', error: err?.message || 'request_failed' };\n    }\n  }\n}\n\nreturn { json: { ...item, telegram_delivery } };\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0018-4000-8000-000000000018",
+      "name": "Send Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2140,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "send-email",
+              "leftValue": "={{ ($json.candidate_emails || []).length > 0 ? ($json.candidate_emails || []).join(',') : ($json.candidate_email || '').toString().trim() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "notify-on",
+              "leftValue": "={{ $json.notify_email }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "r1000000-0019-4000-8000-000000000019",
+      "name": "Prepare Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2380,
+        260
+      ],
+      "parameters": {
+        "jsCode": "const item = $json;\nconst recipients = (item.candidate_emails || []).length\n  ? item.candidate_emails\n  : String(item.candidate_email || '').split(/[,;]/).map((e) => e.trim()).filter(Boolean);\nconst to = recipients.join(', ');\nconst recommended = item.job_title_ranking?.categorized_under || item.job_title || item.resume_job_title || 'Unknown';\nconst matchScore = item.job_match?.weighted_match_score ?? item.job_title_ranking?.best_match?.match_score ?? 'n/a';\nconst reasoning = item.job_title_ranking?.best_match?.reasoning || item.recommendation?.reason || '';\nconst summary = item.ai_analysis?.report_summary || item.report?.ai_summary || '';\nconst allMatches = (item.job_title_ranking?.all_matches || [])\n  .slice(0, 5)\n  .map((m) => `<li><strong>${m.title}</strong>: ${m.match_score}/100 — ${m.reasoning || ''}</li>`)\n  .join('');\n\nconst html = `<div style=\"font-family:Arial,sans-serif;max-width:720px;color:#111827;\">\n  <h2 style=\"color:#1d4ed8;\">Resume Analysis Report</h2>\n  <p>Hi ${item.candidate_name || 'Candidate'},</p>\n  <p>Your resume has been analyzed against our open roles.</p>\n  <table style=\"border-collapse:collapse;width:100%;margin:16px 0;\">\n    <tr><td style=\"padding:8px;border:1px solid #e5e7eb;\"><strong>Candidate</strong></td><td style=\"padding:8px;border:1px solid #e5e7eb;\">${item.candidate_name || 'Unknown'}</td></tr>\n    <tr><td style=\"padding:8px;border:1px solid #e5e7eb;\"><strong>Recommended Job Title</strong></td><td style=\"padding:8px;border:1px solid #e5e7eb;\">${recommended}</td></tr>\n    <tr><td style=\"padding:8px;border:1px solid #e5e7eb;\"><strong>Match Score</strong></td><td style=\"padding:8px;border:1px solid #e5e7eb;\">${matchScore}</td></tr>\n    <tr><td style=\"padding:8px;border:1px solid #e5e7eb;\"><strong>ATS Score</strong></td><td style=\"padding:8px;border:1px solid #e5e7eb;\">${item.ats_result?.score ?? 'n/a'}</td></tr>\n    <tr><td style=\"padding:8px;border:1px solid #e5e7eb;\"><strong>Recommendation</strong></td><td style=\"padding:8px;border:1px solid #e5e7eb;\">${item.recommendation?.label || 'n/a'}</td></tr>\n  </table>\n  <h3>Reasoning</h3>\n  <p>${reasoning}</p>\n  <h3>Resume Analysis Summary</h3>\n  <p>${summary}</p>\n  ${allMatches ? `<h3>All Role Matches</h3><ul>${allMatches}</ul>` : ''}\n  <p style=\"color:#6b7280;font-size:13px;\">Run ID: ${item.run_id}${item.batch_run_id ? ` | Batch: ${item.batch_run_id}` : ''}</p>\n  <p>Regards,<br/>Recruitment AI Assistant</p>\n</div>`;\n\nreturn { json: {\n    ...item,\n    email_outbound: {\n      from: item.sender_email || 'information@variphi.com',\n      to,\n      subject: `Resume Analysis — ${recommended} — ${item.candidate_name || 'Candidate'}`,\n      html,\n    },\n  },\n};",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0020-4000-8000-000000000020",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2620,
+        260
+      ],
+      "parameters": {
+        "fromEmail": "={{ $json.email_outbound.from }}",
+        "toEmail": "={{ $json.email_outbound.to }}",
+        "subject": "={{ $json.email_outbound.subject }}",
+        "emailFormat": "html",
+        "html": "={{ $json.email_outbound.html }}",
+        "options": {}
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "id": "r1000000-0021-4000-8000-000000000021",
+      "name": "Return Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2860,
+        180
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst batch = item.batch_summary || {};\nconst isBatch = (batch.total_processed || 0) > 1;\n\nreturn [{\n  json: {\n    success: true,\n    batch_run_id: item.batch_run_id || item.run_id,\n    total_processed: batch.total_processed || 1,\n    categories: batch.categories || [item.job_title_ranking?.categorized_under || item.job_title].filter(Boolean),\n    categorized_candidates: batch.categorized_candidates || {\n      [item.job_title_ranking?.categorized_under || item.job_title || 'Uncategorized']: [{\n        candidate_name: item.candidate_name,\n        recommended_job_title: item.job_title,\n        match_score: item.job_match?.weighted_match_score ?? null,\n        recommendation: item.recommendation?.label || null,\n      }],\n    },\n    candidates: isBatch\n      ? Object.values(batch.categorized_candidates || {}).flat()\n      : [{\n          run_id: item.run_id,\n          candidate_name: item.candidate_name,\n          candidate_email: item.candidate_email || null,\n          recommended_job_title: item.job_title_ranking?.categorized_under || item.job_title,\n          match_score: item.job_match?.weighted_match_score ?? item.job_title_ranking?.best_match?.match_score ?? null,\n          reasoning: item.job_title_ranking?.best_match?.reasoning || item.recommendation?.reason || null,\n          recommendation: item.recommendation || {},\n          ats_score: item.ats_result?.score ?? null,\n          report: item.report || {},\n        }],\n    run_id: item.run_id,\n    candidate_name: item.candidate_name,\n    job_title_ranking: item.job_title_ranking || null,\n    recommendation: item.recommendation || {},\n    report: item.report || {},\n    delivery: {\n      telegram: item.telegram_delivery || null,\n      email_attempted: Boolean(item.notify_email),\n      email_sent: Boolean(item.email_outbound?.to),\n    },\n    completed_at: new Date().toISOString(),\n  },\n}];"
+      }
+    },
+    {
+      "id": "r1000000-0099-4000-8000-000000000099",
+      "name": "Note: Architecture",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1220,
+        -60
+      ],
+      "parameters": {
+        "content": "## Resume Analysis Agent\n\n• Multiple resumes: resumes, resume_file_paths, or scan_resumes_folder\n• Multiple roles: job_titles array\n• AI ranks best role per candidate\n• Notifications: Telegram + Email (env: OPENROUTER_API_KEY, TELEGRAM_*, SMTP)",
+        "height": 300,
+        "width": 500
+      }
+    },
+    {
+      "id": "r1000000-0038-4000-8000-000000000038",
+      "name": "Use Existing File?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -80,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-path",
+              "leftValue": "={{ ($json.resume_file_path || '').toString().trim() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "r1000000-0039-4000-8000-000000000039",
+      "name": "Use Existing Resume File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        180
+      ],
+      "parameters": {
+        "jsCode": "const item = $json;\nconst path = String(item.resume_file_path || '').trim();\nif (!path) throw new Error('resume_file_path is required for existing file mode');\n\nconst base = path.split('/').pop() || 'resume.pdf';\nconst ext = base.toLowerCase().endsWith('.pdf') ? 'pdf' : 'txt';\n\nreturn { json: {\n    ...item,\n    resume_file_path: path,\n    resume_file_ext: ext,\n    resume_filename: item.resume_filename || base,\n    used_existing_file: true,\n    resume_storage: {\n      directory: '/files/resumes',\n      saved_file: path,\n      host_folder: './files/resumes',\n      host_file: `./files/resumes/${base}`\n    }\n  }\n};\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0040-4000-8000-000000000040",
+      "name": "After Write Resume Meta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        360,
+        380
+      ],
+      "parameters": {
+        "jsCode": "return { json: $('Prepare Resume File').item.json };",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0041-4000-8000-000000000041",
+      "name": "Restore Meta After Read",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        300
+      ],
+      "parameters": {
+        "jsCode": "let meta = {};\ntry { const ex = $('Use Existing Resume File').item; if (ex?.json?.resume_file_path) meta = ex.json; } catch (e) {}\nif (!meta.resume_file_path) meta = $('After Write Resume Meta').item.json;\nreturn { json: meta, binary: $binary };",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0042-4000-8000-000000000042",
+      "name": "Extract Resume Job Title",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        300
+      ],
+      "parameters": {
+        "jsCode": "function cleanKey(key) {\n  return String(key || '').trim().replace(/^Bearer\\s+/i, '');\n}\nfunction isOpenRouterKey(key) {\n  return /^sk-or-/i.test(cleanKey(key));\n}\nfunction chatCompletionsUrl(apiKey) {\n  return isOpenRouterKey(apiKey)\n    ? 'https://openrouter.ai/api/v1/chat/completions'\n    : 'https://api.openai.com/v1/chat/completions';\n}\nfunction normalizeModel(model, apiKey) {\n  const m = String(model || $env.OPENAI_MODEL || 'gpt-4o-mini').trim();\n  if (isOpenRouterKey(apiKey)) {\n    return m.includes('/') ? m : 'openai/' + m.replace(/^openai\\//, '');\n  }\n  return m.replace(/^openai\\//, '');\n}\nasync function getAiApiKey(payload) {\n  let key = cleanKey(payload?.openai_api_key || payload?.openrouter_api_key);\n  if (!key) key = cleanKey($env.OPENAI_API_KEY || $env.OPENROUTER_API_KEY || '');\n  if (!key) {\n    try {\n      const cred = await this.getCredentials('httpHeaderAuth');\n      key = cleanKey(cred.value || cred.headerValue);\n    } catch (e) {}\n  }\n  if (!key) throw new Error('Missing OPENAI_API_KEY. Set in .env or pass openai_api_key in the webhook body.');\n  return key;\n}\n\nconst item = $json;\nconst text = String(item.structured_resume?.raw_resume_text || item.extracted_resume_text || '').trim();\nif (!text) throw new Error('No resume text available for job title extraction');\n\nconst apiKey = await getAiApiKey.call(this, item);\nconst model = normalizeModel(item.openai_model || item.openrouter_model, apiKey);\nconst systemPrompt = 'You extract job titles from resumes. Return strict JSON with keys: current_job_title (string, exact title from most recent/current role), headline (string or null), all_job_titles (array of exact titles from work history, most recent first). Use exact wording from the resume.';\nconst userPrompt = `Extract the exact job title(s) from this resume. Prefer the most recent/current role as current_job_title.\\n\\nResume:\\n${text}`;\n\nconst response = await this.helpers.httpRequest({\n  method: 'POST',\n  url: chatCompletionsUrl(apiKey),\n  headers: {\n    Authorization: `Bearer ${apiKey}`,\n    'Content-Type': 'application/json',\n    'X-Title': 'Resume Analysis Agent'\n  },\n  body: {\n    model,\n    temperature: 0.1,\n    response_format: { type: 'json_object' },\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: userPrompt }\n    ]\n  },\n  json: true,\n  timeout: 60000\n});\n\nconst raw = response.choices?.[0]?.message?.content;\nconst parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;\nconst current = String(parsed.current_job_title || parsed.headline || '').trim();\nif (!current) throw new Error('Could not extract job title from resume');\n\nconst allTitles = Array.isArray(parsed.all_job_titles) ? parsed.all_job_titles.map((t) => String(t).trim()).filter(Boolean) : [];\nconst job_title = current;\nconst job_titles = [job_title];\n\nreturn { json: {\n    ...item,\n    resume_job_title: job_title,\n    resume_all_job_titles: allTitles.length ? allTitles : [job_title],\n    job_title,\n    job_titles,\n    matched_against: 'resume_job_title',\n    job_title_extraction: {\n      current_job_title: job_title,\n      headline: parsed.headline || null,\n      all_job_titles: allTitles.length ? allTitles : [job_title],\n      extracted_at: new Date().toISOString()\n    }\n  }\n};\n",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0043-4000-8000-000000000043",
+      "name": "Resolve Match Job Title",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const item = $json;\nif (item.use_resume_job_title === false) {\n  const title = String(item.job_title || '').trim();\n  if (!title) throw new Error('job_title is required when use_resume_job_title=false');\n  return { json: { ...item, job_title: title, job_titles: [title], matched_against: 'payload_job_title' } };\n}\nreturn { json: item };",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0045-4000-8000-000000000045",
+      "name": "Match Job Openings?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        460,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "match-openings",
+              "leftValue": "={{ Boolean($json.match_all_job_titles) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "r1000000-0044-4000-8000-000000000044",
+      "name": "Rank Best Job Title",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        680,
+        180
+      ],
+      "parameters": {
+        "jsCode": "function cleanKey(key) {\n  return String(key || '').trim().replace(/^Bearer\\s+/i, '');\n}\nfunction isOpenRouterKey(key) {\n  return /^sk-or-/i.test(cleanKey(key));\n}\nfunction chatCompletionsUrl(apiKey) {\n  return isOpenRouterKey(apiKey)\n    ? 'https://openrouter.ai/api/v1/chat/completions'\n    : 'https://api.openai.com/v1/chat/completions';\n}\nfunction normalizeModel(model, apiKey) {\n  const m = String(model || $env.OPENAI_MODEL || 'gpt-4o-mini').trim();\n  if (isOpenRouterKey(apiKey)) {\n    return m.includes('/') ? m : 'openai/' + m.replace(/^openai\\//, '');\n  }\n  return m.replace(/^openai\\//, '');\n}\nasync function getAiApiKey(payload) {\n  let key = cleanKey(payload?.openai_api_key || payload?.openrouter_api_key);\n  if (!key) key = cleanKey($env.OPENAI_API_KEY || $env.OPENROUTER_API_KEY || '');\n  if (!key) {\n    try {\n      const cred = await this.getCredentials('httpHeaderAuth');\n      key = cleanKey(cred.value || cred.headerValue);\n    } catch (e) {}\n  }\n  if (!key) throw new Error('Missing OPENAI_API_KEY. Set in .env or pass openai_api_key in the webhook body.');\n  return key;\n}\n\nconst item = $json;\nconst jobTitles = item.job_titles || [];\nif (!jobTitles.length) throw new Error('job_titles required for ranking');\n\nconst apiKey = await getAiApiKey.call(this, item);\nconst model = normalizeModel(item.openai_model || item.openrouter_model, apiKey);\nconst resumeText = item.structured_resume?.raw_resume_text || item.extracted_resume_text || '';\n\nconst openings = jobTitles.map((j, i) => `[${i + 1}] ${j.title}\nRequired: ${(j.required_skills || []).join(', ') || 'Infer from resume'}\nPreferred: ${(j.preferred_skills || []).join(', ') || 'None'}\nMin experience: ${j.min_experience_years || 0} years\nDescription: ${j.job_description || 'N/A'}`).join('\\n\\n');\n\nconst systemPrompt = 'You are an expert technical recruiter. Compare the candidate resume against EVERY job opening listed. Pick the single best-fitting role. Return strict JSON with keys: candidate_name (string), best_match { title, match_score (0-100), reasoning }, all_matches (array of { title, match_score, reasoning, matched_skills, gaps }), categorized_under (string, equals best_match.title). Sort all_matches by match_score descending.';\nconst userPrompt = `Candidate label: ${item.candidate_name || 'Unknown'}\nResume file: ${item.resume_filename || item.resume_file_path || 'n/a'}\n\nJOB OPENINGS:\n${openings}\n\nRESUME:\n${resumeText}`;\n\nconst response = await this.helpers.httpRequest({\n  method: 'POST',\n  url: chatCompletionsUrl(apiKey),\n  headers: {\n    Authorization: `Bearer ${apiKey}`,\n    'Content-Type': 'application/json',\n    'X-Title': 'Resume Analysis Agent',\n  },\n  body: {\n    model,\n    temperature: 0.2,\n    response_format: { type: 'json_object' },\n    messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: userPrompt },\n    ],\n  },\n  json: true,\n  timeout: 90000,\n});\n\nconst raw = response.choices?.[0]?.message?.content;\nconst parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;\nconst best = parsed.best_match || {};\nconst bestTitle = String(best.title || parsed.categorized_under || jobTitles[0].title).trim();\nconst matchedJob = jobTitles.find((j) => j.title.toLowerCase() === bestTitle.toLowerCase()) || jobTitles[0];\n\nreturn { json: {\n    ...item,\n    candidate_name: parsed.candidate_name || item.candidate_name,\n    job_title: bestTitle,\n    job_title_ranking: {\n      best_match: best,\n      all_matches: parsed.all_matches || [],\n      categorized_under: parsed.categorized_under || bestTitle,\n      ranked_at: new Date().toISOString(),\n    },\n    matched_against: 'best_job_title',\n    resume_job_title: bestTitle,\n    resume_all_job_titles: (parsed.all_matches || []).map((m) => m.title),\n    required_skills: matchedJob.required_skills || item.required_skills || [],\n    preferred_skills: matchedJob.preferred_skills || item.preferred_skills || [],\n    min_experience_years: matchedJob.min_experience_years ?? item.min_experience_years ?? 0,\n    job_description: matchedJob.job_description || item.job_description || '',\n  },\n};",
+        "mode": "runOnceForEachItem"
+      }
+    },
+    {
+      "id": "r1000000-0046-4000-8000-000000000046",
+      "name": "Aggregate Batch Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3000,
+        180
+      ],
+      "parameters": {
+        "jsCode": "const items = $input.all().map((i) => i.json);\nconst byJobTitle = {};\n\nfor (const item of items) {\n  const cat = item.job_title_ranking?.categorized_under || item.job_title || 'Uncategorized';\n  if (!byJobTitle[cat]) byJobTitle[cat] = [];\n  byJobTitle[cat].push({\n    run_id: item.run_id,\n    candidate_name: item.candidate_name,\n    candidate_email: item.candidate_email,\n    resume_file: item.resume_filename || item.resume_file_path,\n    recommended_job_title: item.job_title,\n    match_score: item.job_match?.weighted_match_score ?? item.job_title_ranking?.best_match?.match_score ?? null,\n    ranking_reasoning: item.job_title_ranking?.best_match?.reasoning || null,\n    recommendation: item.recommendation?.label || null,\n    recommendation_reason: item.recommendation?.reason || null,\n    ats_score: item.ats_result?.score ?? null,\n    summary: item.ai_analysis?.report_summary || item.report?.ai_summary || '',\n    all_title_matches: item.job_title_ranking?.all_matches || [],\n    report: item.report || {},\n    delivery: {\n      email: item.email_outbound ? 'prepared' : 'skipped',\n      telegram: item.telegram_delivery || null,\n    },\n  });\n}\n\nconst first = items[0] || {};\nconst categoryLines = Object.entries(byJobTitle).map(([title, cands]) =>\n  `${title} (${cands.length}): ${cands.map((c) => c.candidate_name).join(', ')}`\n).join('\\n');\n\nreturn [{\n  json: {\n    ...first,\n    batch_summary: {\n      batch_run_id: first.batch_run_id,\n      total_processed: items.length,\n      categories: Object.keys(byJobTitle),\n      categorized_candidates: byJobTitle,\n      summary_text: categoryLines,\n    },\n    all_candidates: items,\n    report_text: [\n      'Batch Resume Analysis Summary',\n      `Processed: ${items.length} resume(s)`,\n      '',\n      categoryLines,\n    ].join('\\n'),\n  },\n}];"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set: Sample Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Sample Payload": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Triggers": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Use Existing File?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean & Structure Resume": {
+      "main": [
+        [
+          {
+            "node": "Match Job Openings?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Resume Analysis": {
+      "main": [
+        [
+          {
+            "node": "ATS Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ATS Score": {
+      "main": [
+        [
+          {
+            "node": "Skill Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skill Extraction": {
+      "main": [
+        [
+          {
+            "node": "Experience Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Experience Analysis": {
+      "main": [
+        [
+          {
+            "node": "Job Matching Engine",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Job Matching Engine": {
+      "main": [
+        [
+          {
+            "node": "AI Recommendation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Recommendation": {
+      "main": [
+        [
+          {
+            "node": "Generate Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Report": {
+      "main": [
+        [
+          {
+            "node": "Telegram Delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Delivery": {
+      "main": [
+        [
+          {
+            "node": "Send Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Aggregate Batch Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Email": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Batch Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Resume File": {
+      "main": [
+        [
+          {
+            "node": "Write Resume File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Resume File": {
+      "main": [
+        [
+          {
+            "node": "After Write Resume Meta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Resume File": {
+      "main": [
+        [
+          {
+            "node": "Restore Meta After Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is PDF?": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract TXT From File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF Text": {
+      "main": [
+        [
+          {
+            "node": "Restore PDF Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore PDF Context": {
+      "main": [
+        [
+          {
+            "node": "Clean & Structure Resume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract TXT From File": {
+      "main": [
+        [
+          {
+            "node": "Clean & Structure Resume",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Existing File?": {
+      "main": [
+        [
+          {
+            "node": "Use Existing Resume File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Resume File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Existing Resume File": {
+      "main": [
+        [
+          {
+            "node": "Read Resume File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "After Write Resume Meta": {
+      "main": [
+        [
+          {
+            "node": "Read Resume File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Meta After Read": {
+      "main": [
+        [
+          {
+            "node": "Is PDF?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Resume Job Title": {
+      "main": [
+        [
+          {
+            "node": "Resolve Match Job Title",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resolve Match Job Title": {
+      "main": [
+        [
+          {
+            "node": "AI Resume Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Job Openings?": {
+      "main": [
+        [
+          {
+            "node": "Rank Best Job Title",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Extract Resume Job Title",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rank Best Job Title": {
+      "main": [
+        [
+          {
+            "node": "AI Resume Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Batch Results": {
+      "main": [
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}

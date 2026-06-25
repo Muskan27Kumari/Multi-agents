@@ -1,0 +1,16 @@
+{
+  "text_query": "Samsung Galaxy S24 Ultra customer reviews",
+  "notify_telegram": false,
+  "search_sources": [
+    "google",
+    "news",
+    "reddit",
+    "twitter",
+    "youtube",
+    "amazon",
+    "flipkart",
+    "linkedin",
+    "forums"
+  ],
+  "max_results_per_source": 5
+}

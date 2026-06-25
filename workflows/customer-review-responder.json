@@ -1,0 +1,686 @@
+{
+  "name": "Customer Review Responder",
+  "nodes": [
+    {
+      "id": "c3000000-0001-4000-8000-000000000001",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1500,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "customer-review-responder",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "webhookId": "customer-review-responder-webhook"
+    },
+    {
+      "id": "c3000000-0002-4000-8000-000000000002",
+      "name": "Telegram Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1500,
+        200
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "customer-review-responder-telegram",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "webhookId": "customer-review-responder-telegram"
+    },
+    {
+      "id": "c3000000-0003-4000-8000-000000000003",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1500,
+        400
+      ]
+    },
+    {
+      "id": "c3000000-0004-4000-8000-000000000004",
+      "name": "Set: Sample Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1260,
+        400
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"text_query\": \"Samsung Galaxy S24 Ultra customer reviews\",\n  \"notify_telegram\": false,\n  \"search_sources\": [\n    \"google\",\n    \"news\",\n    \"reddit\",\n    \"twitter\",\n    \"youtube\",\n    \"amazon\",\n    \"flipkart\",\n    \"linkedin\",\n    \"forums\"\n  ],\n  \"max_results_per_source\": 5\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "c3000000-0005-4000-8000-000000000005",
+      "name": "Adapt Telegram Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1260,
+        200
+      ],
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nconst token = String(\n  raw.telegram_bot_token || raw.body?.telegram_bot_token\n  || $env.TELEGRAM_BOT_TOKEN || ''\n).trim();\nconst allowedChatId = String($env.TELEGRAM_CHAT_ID || '').trim();\n\nfunction skip(reason) {\n  return [{ json: { telegram_skip: true, channel: 'telegram', skip_reason: reason } }];\n}\n\nfunction reply(text, chatId) {\n  return [{\n    json: {\n      action: 'telegram_reply',\n      channel: 'telegram',\n      telegram_bot_token: token,\n      telegram_chat_id: chatId,\n      telegram_text: text,\n    },\n  }];\n}\n\nlet update = raw;\nif (raw.body && typeof raw.body === 'object' && !Array.isArray(raw.body)) {\n  if (raw.body.update_id != null || raw.body.message) update = raw.body;\n}\nif (typeof raw.body === 'string' && raw.body.trim()) {\n  try {\n    const parsed = JSON.parse(raw.body);\n    if (parsed && (parsed.update_id != null || parsed.message)) update = parsed;\n  } catch (e) {}\n}\n\nconst msg = update.message || update.edited_message || update.channel_post;\nif (!msg) return skip('no_message');\n\nconst chatId = String(msg.chat?.id || '');\nif (allowedChatId && chatId !== allowedChatId) {\n  return reply('This bot is restricted to an authorized chat.', chatId);\n}\n\nlet text = String(msg.text || msg.caption || '').trim();\ntext = text.replace(/^\\/reviews?(?:@\\w+)?\\s*/i, '').trim();\n\nfunction normalizeGreeting(t) {\n  return String(t || '').trim().toLowerCase().replace(/[!?.…,]+$/g, '').replace(/\\s+/g, ' ');\n}\n\nfunction isGreeting(t) {\n  const s = normalizeGreeting(t);\n  if (!s) return false;\n  const greetings = new Set([\n    'hi', 'hii', 'hello', 'hey', 'hiya', 'howdy', 'greetings', 'sup', 'yo',\n    'good morning', 'good afternoon', 'good evening', 'good day',\n    'hi there', 'hello there', 'hey there',\n  ]);\n  if (greetings.has(s)) return true;\n  return /^h+i+$/.test(s) || /^he+l+o+$/.test(s) || /^he+y+$/.test(s);\n}\n\nfunction reviewPromptMessage() {\n  return [\n    '📦 Customer review research',\n    '',\n    'Send me any product using one of these:',\n    '',\n    '📝 Product name — e.g. \"iPhone 15 Pro reviews\"',\n    '🔗 Product link — Amazon, Flipkart, or any store URL',\n    '📷 Product photo — add a caption with the product name for best results',\n    '',\n    'Type /cancel to exit review mode.',\n  ].join('\\n');\n}\n\nfunction welcomeMessage() {\n  const brand = String($env.BRAND_NAME || 'VGI Skill Universe!').trim();\n  return [\n    'Welcome to ' + brand,\n    '',\n    'I research customer reviews for any product.',\n    '',\n    'Type /review then send:',\n    '• A product photo (caption recommended)',\n    '• A product link (Amazon, Flipkart, etc.)',\n    '• A product name — e.g. \"Maruti Suzuki Dzire reviews\"',\n  ].join('\\n');\n}\nconst photos = msg.photo || [];\nlet imageUrl = '';\nlet imageBase64 = '';\n\nasync function downloadTelegramImage(fileId) {\n  const fileResp = await this.helpers.httpRequest({\n    method: 'GET',\n    url: 'https://api.telegram.org/bot' + token + '/getFile?file_id=' + encodeURIComponent(fileId),\n    json: true,\n    timeout: 15000,\n  });\n  const filePath = fileResp.result?.file_path;\n  if (!filePath) return { imageUrl: '', imageBase64: '' };\n  const fileUrl = 'https://api.telegram.org/file/bot' + token + '/' + filePath;\n  const bytes = await this.helpers.httpRequest({\n    method: 'GET',\n    url: fileUrl,\n    encoding: 'arraybuffer',\n    timeout: 20000,\n  });\n  const buf = Buffer.from(bytes);\n  if (!buf.length) return { imageUrl: fileUrl, imageBase64: '' };\n  const mime = /\\.png$/i.test(filePath) ? 'image/png' : (/\\.webp$/i.test(filePath) ? 'image/webp' : 'image/jpeg');\n  return { imageUrl: fileUrl, imageBase64: buf.toString('base64'), image_mime: mime };\n}\n\nif (token) {\n  try {\n    const fileIds = [];\n    if (photos.length) {\n      const mid = photos.length >= 2 ? photos[photos.length - 2] : photos[photos.length - 1];\n      fileIds.push(mid.file_id);\n      if (photos.length > 1) fileIds.push(photos[0].file_id);\n    } else if (msg.document && /^image\\//i.test(String(msg.document.mime_type || ''))) {\n      fileIds.push(msg.document.file_id);\n    }\n    for (const fileId of fileIds) {\n      const img = await downloadTelegramImage.call(this, fileId);\n      imageUrl = img.imageUrl || '';\n      imageBase64 = img.imageBase64 || '';\n      if (imageBase64 && imageBase64.length <= 280000) break;\n    }\n  } catch (e) {}\n}\n\nconst lower = text.toLowerCase();\nif (!imageUrl && !imageBase64 && (lower === '/start' || lower === '/help' || isGreeting(text))) {\n  return reply(welcomeMessage(), chatId);\n}\n\nif (!text && !imageUrl && !imageBase64) {\n  return reply(reviewPromptMessage(), chatId);\n}\n\nreturn [{\n  json: {\n    channel: 'telegram',\n    text_query: text,\n    image_url: imageUrl,\n    image_base64: imageBase64,\n    telegram_bot_token: token,\n    telegram_chat_id: chatId,\n    notify_telegram: true,\n    openrouter_api_key: String($env.OPENAI_API_KEY || $env.OPENROUTER_API_KEY || '').trim(),\n    serper_api_key: String($env.SERPER_API_KEY || '').trim(),\n  },\n}];"
+      }
+    },
+    {
+      "id": "c3000000-0007-4000-8000-000000000007",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1020,
+        200
+      ],
+      "parameters": {
+        "jsCode": "function cleanKey(key) {\n  return String(key || '').trim().replace(/^Bearer\\s+/i, '');\n}\n\nfunction isPlaceholderKey(key) {\n  const k = cleanKey(key).toLowerCase();\n  return !k\n    || k.includes('your-key')\n    || k.includes('your-openrouter')\n    || k.includes('your_serper')\n    || k === 'sk-or-v1-your-key'\n    || k === 'sk-or-v1-your_openrouter_key'\n    || k === 'your-serper-key';\n}\n\nasync function resolveOpenRouterKey(body, raw) {\n  const preferOpenAI = String($env.AI_PROVIDER || 'openai').toLowerCase() === 'openai';\n  let key = '';\n  if (preferOpenAI) {\n    key = cleanKey(body.openai_api_key || raw.openai_api_key || $env.OPENAI_API_KEY || '');\n    if (key && !isPlaceholderKey(key) && !/^sk-or-/i.test(key)) return key;\n  }\n  key = cleanKey(body.openrouter_api_key || raw.openrouter_api_key || body.openai_api_key || raw.openai_api_key || $env.OPENROUTER_API_KEY || $env.OPENAI_API_KEY || '');\n  if (isPlaceholderKey(key)) key = cleanKey($env.OPENAI_API_KEY || $env.OPENROUTER_API_KEY || '');\n  if (!key) {\n    try {\n      const cred = await this.getCredentials('httpHeaderAuth');\n      key = cleanKey(cred.value || cred.headerValue);\n    } catch (e) {}\n  }\n  if (isPlaceholderKey(key)) return '';\n  return key;\n}\n\nconst raw = $input.first().json;\nif (raw.telegram_skip || raw.action === 'telegram_reply') return [{ json: raw }];\n\nconst body = raw.body && typeof raw.body === 'object' && !Array.isArray(raw.body) ? raw.body : raw;\nconst envOr = (v, envKey) => String(v || $env[envKey] || '').trim();\nconst openrouterKey = await resolveOpenRouterKey.call(this, body, raw);\nconst serperRaw = String(body.serper_api_key || raw.serper_api_key || $env.SERPER_API_KEY || '').trim();\nconst serperKey = isPlaceholderKey(serperRaw) ? '' : serperRaw;\n\nfunction extractUrlAndText(input) {\n  const raw = String(input || '').trim();\n  const m = raw.match(/(https?:\\/\\/[^\\s<>\"']+|(?:[a-z0-9-]+\\.)+[a-z]{2,}\\/[^\\s<>\"']+)/i);\n  if (!m) return { url: '', text: raw };\n  let url = m[1].replace(/[),.;!?]+$/, '');\n  if (!/^https?:\\/\\//i.test(url)) url = 'https://' + url;\n  const text = raw.replace(m[1], '').trim();\n  return { url, text };\n}\n\nconst explicitUrl = String(body.product_url || body.url || raw.product_url || raw.url || '').trim();\nconst textRaw = String(body.text_query || body.query || body.text || '').trim();\nconst parsed = extractUrlAndText(textRaw);\nconst productUrl = explicitUrl || parsed.url;\nconst textQuery = parsed.text || (productUrl && !parsed.text ? '' : textRaw);\n\nreturn [{\n  json: {\n    run_id: 'crr_' + Date.now() + '_' + Math.random().toString(16).slice(2, 8),\n    text_query: textQuery || (productUrl ? 'Product from link' : ((body.image_url || raw.image_url || body.image_base64) ? 'Product from image' : '')),\n    product_url: productUrl,\n    product_name: String(body.product_name || body.product || '').trim(),\n    brand: String(body.brand || '').trim(),\n    category: String(body.category || '').trim(),\n    image_url: String(body.image_url || raw.image_url || '').trim(),\n    image_base64: String(body.image_base64 || '').trim(),\n    review_context: String(body.review_context || body.context || '').trim(),\n    openrouter_api_key: openrouterKey,\n    openrouter_model: String(body.openrouter_model || raw.openrouter_model || body.openai_model || raw.openai_model || $env.OPENAI_MODEL || $env.OPENROUTER_MODEL || 'gpt-4o-mini').trim(),\n    vision_model: String(body.vision_model || body.openai_model || body.openrouter_model || $env.OCR_VISION_MODEL || $env.OPENAI_MODEL || $env.OPENROUTER_MODEL || 'gpt-4o-mini').trim(),\n    serper_api_key: serperKey,\n    telegram_bot_token: envOr(body.telegram_bot_token || raw.telegram_bot_token, 'TELEGRAM_BOT_TOKEN'),\n    telegram_chat_id: String(body.telegram_chat_id || raw.telegram_chat_id || $env.TELEGRAM_CHAT_ID || '').trim(),\n    notify_telegram: Boolean(\n      body.notify_telegram ?? raw.notify_telegram ?? (\n        Boolean($env.TELEGRAM_BOT_TOKEN) && Boolean(\n          String(body.telegram_chat_id || raw.telegram_chat_id || $env.TELEGRAM_CHAT_ID || '').trim()\n        )\n      )\n    ),\n    search_sources: Array.isArray(body.search_sources) ? body.search_sources : [\n      'google', 'news', 'reddit', 'twitter', 'youtube',\n      'amazon', 'flipkart', 'linkedin', 'forums',\n    ],\n    max_results_per_source: Math.min(Math.max(Number(body.max_results_per_source || 5), 1), 10),\n    channel: String(body.channel || raw.channel || 'webhook'),\n    triggered_at: new Date().toISOString(),\n  },\n}];"
+      }
+    },
+    {
+      "id": "c3000000-0008-4000-8000-000000000008",
+      "name": "IF Telegram Skip?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -780,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c3000000-0008-4000-8000-000000000008-cond",
+              "leftValue": "={{ Boolean($json.telegram_skip || $json.action === \"telegram_reply\") }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "c3000000-0009-4000-8000-000000000009",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        200
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nif (item.telegram_skip || item.action === 'telegram_reply') return $input.all();\n\nconst hasInput = item.text_query || item.product_name || item.image_url || item.image_base64 || item.product_url;\nif (!hasInput) {\n  throw new Error('Provide at least one of: text_query, product_url, product_name, image_url, or image_base64.');\n}\nif (!item.openrouter_api_key) {\n  throw new Error('Missing AI API key. Pass in webhook body, set OPENAI_API_KEY in .env, or attach HTTP Header Auth credential.');\n}\nreturn $input.all();"
+      }
+    },
+    {
+      "id": "c3000000-0010-4000-8000-000000000010",
+      "name": "IF Has Image?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -60,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c3000000-0010-4000-8000-000000000010-cond",
+              "leftValue": "={{ Boolean($json.image_url || $json.image_base64) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "c3000000-0013-4000-8000-000000000013",
+      "name": "IF Has URL?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        180,
+        320
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c3000000-0013-4000-8000-000000000013-cond",
+              "leftValue": "={{ Boolean(($json.product_url || \"\").trim()) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "c3000000-0011-4000-8000-000000000011",
+      "name": "Vision AI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        180,
+        80
+      ],
+      "parameters": {
+        "jsCode": "function cleanKey(key) {\n  return String(key || '').trim().replace(/^Bearer\\s+/i, '');\n}\nfunction isOpenRouterKey(key) {\n  return /^sk-or-/i.test(cleanKey(key));\n}\nfunction chatCompletionsUrl(apiKey) {\n  return isOpenRouterKey(apiKey)\n    ? 'https://openrouter.ai/api/v1/chat/completions'\n    : 'https://api.openai.com/v1/chat/completions';\n}\nfunction normalizeChatModel(model, apiKey) {\n  const m = String(model || $env.OPENAI_MODEL || $env.OPENROUTER_MODEL || 'gpt-4o-mini').trim();\n  if (isOpenRouterKey(apiKey)) {\n    return m.includes('/') ? m : 'openai/' + m.replace(/^openai\\//, '');\n  }\n  return m.replace(/^openai\\//, '');\n}\n\nfunction parseJsonLoose(raw) {\n  if (!raw) return null;\n  if (typeof raw === 'object') return raw;\n  let s = String(raw).trim();\n  try { return JSON.parse(s); } catch (e) {}\n  const start = s.indexOf('{');\n  if (start >= 0) {\n    s = s.slice(start);\n    for (const suffix of ['', '}', '\"}']) {\n      try { return JSON.parse(s + suffix); } catch (e2) {}\n    }\n  }\n  return null;\n}\n\nfunction buildVisionExplanation(parsed) {\n  const name = String(parsed.product_name || 'This product').trim();\n  const brand = parsed.brand ? ' by ' + parsed.brand : '';\n  const cat = parsed.category ? ' (' + parsed.category + ')' : '';\n  const cues = (parsed.visual_cues || []).slice(0, 5);\n  let s = name + brand + cat + ' — identified from your photo.';\n  if (parsed.model_variant) s += ' Model/variant: ' + parsed.model_variant + '.';\n  if (cues.length) s += ' Visible details: ' + cues.join('; ') + '.';\n  return s.slice(0, 900);\n}\n\nconst item = $input.first().json;\nconst apiKey = cleanKey(item.openrouter_api_key);\nconst primaryModel = String(item.vision_model || $env.OCR_VISION_MODEL || $env.OPENROUTER_MODEL || '').trim();\n\nlet imageUrl = String(item.image_url || '').trim();\nconst b64 = String(item.image_base64 || '').trim();\n\nif (!imageUrl && !b64) {\n  throw new Error('Vision AI: no image_url or image_base64 provided.');\n}\n\nfunction visionHelpReply(item, text) {\n  if (item.channel === 'telegram') {\n    return [{ json: { ...item, action: 'telegram_reply', telegram_text: text, notify_telegram: false } }];\n  }\n  throw new Error(text);\n}\n\nconst isTelegramFileUrl = /api\\.telegram\\.org\\/file\\/bot/i.test(imageUrl);\n\nif (b64) {\n  const mime = b64.startsWith('/9j/') ? 'image/jpeg' : (b64.startsWith('iVBOR') ? 'image/png' : (b64.startsWith('UklGR') ? 'image/webp' : 'image/jpeg'));\n  imageUrl = 'data:' + mime + ';base64,' + b64.replace(/^data:image\\/\\w+;base64,/, '');\n} else if (isTelegramFileUrl) {\n  return visionHelpReply(item, '📷 Could not prepare your photo for analysis. Resend with a caption naming the product (e.g. \"Mercedes A-Class reviews\").');\n}\n\nconst userNote = String(item.text_query || '').trim();\nconst captionFallbackName = userNote && !/^product from (image|link)$/i.test(userNote)\n  ? userNote.replace(/\\b(customer\\s+)?reviews?\\b/gi, '').trim()\n  : '';\n\nconst systemPrompt = 'You identify consumer products from photos for a customer review research system. Return strict JSON only with keys: product_name (string — exact searchable product name, include model/size/color if visible), brand (string or null), category (string), model_variant (string or null), confidence (0-100 number), visual_cues (array of 3-6 short strings describing packaging, labels, colors, size), search_queries (array of 3-4 web search strings focused on CUSTOMER REVIEWS and buyer opinions).';\nconst userPrompt = 'Identify the product in this image for customer review research. Return the most specific product name possible (brand + model + variant). Focus search_queries on customer reviews and buyer feedback.'\n  + (userNote && userNote !== 'Product from image' ? '\\n\\nUser note: ' + userNote : '');\n\nfunction parseVisionResult(content) {\n  const parsed = parseJsonLoose(content) || {};\n  if (parsed.product_name) return parsed;\n  const raw = String(content || '');\n  const nameM = raw.match(/product_name[\"'\\s:]+[\"']?([^\"'\\n,}]+)/i);\n  const brandM = raw.match(/brand[\"'\\s:]+[\"']?([^\"'\\n,}]+)/i);\n  if (nameM) {\n    parsed.product_name = nameM[1].trim();\n    if (brandM) parsed.brand = brandM[1].trim();\n  }\n  return parsed.product_name ? parsed : null;\n}\n\nif (imageUrl.startsWith('data:') && imageUrl.length > 350000) {\n  if (captionFallbackName && captionFallbackName.length >= 3) {\n    const parsed = {\n      product_name: captionFallbackName,\n      brand: null,\n      category: 'product',\n      confidence: 50,\n      visual_cues: ['Identified from your caption (photo too large for vision)'],\n      search_queries: [captionFallbackName + ' customer reviews'],\n      used_caption_fallback: true,\n    };\n    const productName = String(parsed.product_name || '').trim();\n    const productDetails = {\n      name: productName,\n      brand: null,\n      category: parsed.category || null,\n      retailer: null,\n      price: null,\n      rating: null,\n      review_count: null,\n      description: 'Product name taken from your caption because the photo was too large to analyze.',\n      features: parsed.visual_cues.slice(0, 6),\n      image: null,\n      source: 'caption',\n      identification_confidence: 50,\n      product_explanation: productName + ' — identified from your caption.',\n    };\n    return [{\n      json: {\n        ...item,\n        text_query: productName,\n        identification_source: 'caption',\n        review_context: productDetails.product_explanation,\n        product_details: productDetails,\n        product: {\n          product_name: productName.slice(0, 200),\n          brand: null,\n          category: 'product',\n          model_variant: null,\n          confidence: 50,\n          visual_cues: parsed.visual_cues,\n          search_queries: parsed.search_queries,\n        },\n      },\n    }];\n  }\n  return visionHelpReply(item, '📷 Image is too large to analyze quickly. Resend a smaller photo or add a caption with the product name (e.g. \"Mercedes A-Class reviews\").');\n}\n\nasync function identifyFromImage(model, maxTokens, useJsonFormat, reqTimeout) {\n  const body = {\n    model,\n    temperature: 0.1,\n    max_tokens: maxTokens,\n    messages: [\n      { role: 'system', content: systemPrompt },\n      {\n        role: 'user',\n        content: [\n          { type: 'text', text: userPrompt },\n          { type: 'image_url', image_url: { url: imageUrl } },\n        ],\n      },\n    ],\n  };\n  if (useJsonFormat) body.response_format = { type: 'json_object' };\n  return this.helpers.httpRequest({\n    method: 'POST',\n    url: chatCompletionsUrl(apiKey),\n    headers: {\n      Authorization: 'Bearer ' + apiKey,\n      'Content-Type': 'application/json',\n      'X-Title': 'Customer Review Responder',\n    },\n    body,\n    json: true,\n    timeout: reqTimeout || 15000,\n  });\n}\n\nlet response = null;\nlet parsed = null;\nlet visionModelUsed = null;\nlet rateLimitRetries = 0;\nconst visionAttempts = [\n  { useJson: true, maxTokens: 400, timeout: 18000 },\n  { useJson: false, maxTokens: 300, timeout: 15000 },\n];\nconst visionModels = [\n  normalizeChatModel(primaryModel, apiKey),\n  normalizeChatModel('gpt-4o-mini', apiKey),\n].filter((m, i, arr) => m && arr.indexOf(m) === i);\nif (isOpenRouterKey(apiKey)) visionModels.push('openrouter/free');\n\nouter: for (const visionModel of visionModels) {\nfor (const attempt of visionAttempts) {\n  try {\n    response = await identifyFromImage.call(this, visionModel, attempt.maxTokens, attempt.useJson, attempt.timeout);\n    const apiErr = response?.error;\n    if (apiErr) {\n      const errMsg = String(apiErr.message || apiErr.code || '');\n      if (/429|rate.limit/i.test(errMsg)) {\n        rateLimitRetries += 1;\n        if (rateLimitRetries < 2) await new Promise((r) => setTimeout(r, 1500));\n        continue;\n      }\n      continue;\n    }\n    parsed = parseVisionResult(response.choices?.[0]?.message?.content);\n    if (parsed?.product_name) {\n      visionModelUsed = visionModel;\n      break outer;\n    }\n  } catch (err) {\n    const msg = String(err.message || err);\n    if (msg.includes('401')) throw new Error('AI 401: invalid API key for vision.');\n    if (/429|rate.limit/i.test(msg)) {\n      rateLimitRetries += 1;\n      if (rateLimitRetries < 2) await new Promise((r) => setTimeout(r, 1500));\n      continue;\n    }\n  }\n}\n}\n\nparsed = parsed || {};\nif (!parsed.product_name) {\n  const fallbackName = captionFallbackName;\n  if (fallbackName && fallbackName.length >= 3) {\n    parsed = {\n      product_name: fallbackName,\n      brand: null,\n      category: 'product',\n      confidence: 45,\n      visual_cues: ['Identified from your caption'],\n      search_queries: [fallbackName + ' customer reviews'],\n      used_caption_fallback: true,\n    };\n  } else if ((parsed.visual_cues || []).length) {\n    parsed.product_name = ((parsed.category ? parsed.category + ' ' : '') + parsed.visual_cues.slice(0, 3).join(' ')).trim();\n    parsed.confidence = Number(parsed.confidence || 35);\n  } else {\n    const helpText = rateLimitRetries >= 2\n      ? '📷 Photo recognition is temporarily busy. Resend your image with a caption naming the product (e.g. \"Mercedes A-Class reviews\") — that works instantly.'\n      : '📷 I could not identify the product from your photo. Resend with a caption naming the product (e.g. \"Mercedes A-Class reviews\").';\n    return visionHelpReply(item, helpText);\n  }\n}\n\nconst productName = String(parsed.product_name || '').trim();\nconst brand = parsed.brand || null;\nconst visualCues = (parsed.visual_cues || []).map((x) => String(x).trim()).filter(Boolean);\nconst searchQueries = [...new Set([\n  ...(parsed.search_queries || []),\n  productName + ' customer reviews',\n  productName + ' reviews',\n  (brand ? brand + ' ' : '') + productName + ' review',\n  productName + ' buyer feedback',\n].map((q) => String(q).trim()).filter(Boolean))].slice(0, 5);\n\nconst productDetails = {\n  name: productName,\n  brand,\n  category: parsed.category || null,\n  retailer: null,\n  price: null,\n  rating: null,\n  review_count: null,\n  description: visualCues.join('; ').slice(0, 500) || null,\n  features: visualCues.slice(0, 6),\n  image: imageUrl.startsWith('data:') ? null : imageUrl,\n  source: 'image',\n  identification_confidence: Number(parsed.confidence || 75),\n  product_explanation: buildVisionExplanation(parsed),\n  vision_model: visionModelUsed || primaryModel,\n};\n\nreturn [{\n  json: {\n    ...item,\n    text_query: productName,\n    identification_source: 'vision',\n    review_context: productDetails.product_explanation,\n    product_details: productDetails,\n    product: {\n      product_name: productName.slice(0, 200),\n      brand,\n      category: String(parsed.category || 'product').trim(),\n      model_variant: parsed.model_variant || null,\n      confidence: Number(parsed.confidence || 75),\n      visual_cues: visualCues,\n      search_queries: searchQueries,\n    },\n  },\n}];"
+      }
+    },
+    {
+      "id": "c3000000-0011-4000-8000-00000000001b",
+      "name": "IF Vision Reply?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        300,
+        80
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "c3000000-0011-4000-8000-00000000001b-cond",
+              "leftValue": "={{ $json.action === \"telegram_reply\" }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "c3000000-0012-4000-8000-000000000012",
+      "name": "Fetch Product URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        320
+      ],
+      "parameters": {
+        "jsCode": "function decodeHtml(s) {\n  return String(s || '')\n    .replace(/&amp;/g, '&').replace(/&quot;/g, '\"').replace(/&#39;/g, \"'\").replace(/&lt;/g, '<').replace(/&gt;/g, '>')\n    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))\n    .replace(/&#(\\d+);/g, (_, n) => String.fromCharCode(Number(n)))\n    .replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n}\n\nfunction metaContent(html, prop) {\n  const h = String(html || '');\n  const needles = ['property=\"' + prop + '\"', \"property='\" + prop + \"'\", 'name=\"' + prop + \"'\", \"name='\" + prop + \"'\"];\n  for (const needle of needles) {\n    const i = h.indexOf(needle);\n    if (i < 0) continue;\n    const chunk = h.slice(i, i + 600);\n    const cm = chunk.match(/content=([\"'])([^\"']+)\\1/i);\n    if (cm) return decodeHtml(cm[2]);\n  }\n  return '';\n}\n\nfunction parseJsonLd(html) {\n  const blocks = String(html || '').match(/<script[^>]+type=[\"']application\\/ld\\+json[\"'][^>]*>([\\s\\S]*?)<\\/script>/gi) || [];\n  for (const block of blocks) {\n    const inner = block.replace(/<script[^>]*>|<\\/script>/gi, '').trim();\n    try {\n      let data = JSON.parse(inner);\n      const list = Array.isArray(data) ? data : (data['@graph'] || [data]);\n      const product = list.find((x) => {\n        const t = x['@type'];\n        return t === 'Product' || (Array.isArray(t) && t.includes('Product'));\n      });\n      if (product) return product;\n    } catch (e) {}\n  }\n  return null;\n}\n\nfunction hostFromUrl(inputUrl) {\n  try { return new URL(inputUrl).hostname.replace(/^www\\./, ''); } catch (e) {}\n  const m = String(inputUrl || '').match(/https?:\\/\\/([^\\/?:#]+)/i);\n  return m ? m[1].replace(/^www\\./, '') : '';\n}\n\nfunction retailerFromUrl(url) {\n  try {\n    const host = hostFromUrl(url);\n    const map = [\n      [/amazon|amzn\\.in/, (h) => (h.includes('.in') ? 'Amazon India' : 'Amazon')],\n      [/flipkart/, () => 'Flipkart'],\n      [/myntra/, () => 'Myntra'],\n      [/nykaa/, () => 'Nykaa'],\n      [/ajio/, () => 'Ajio'],\n      [/croma/, () => 'Croma'],\n      [/reliancedigital|reliance digital/, () => 'Reliance Digital'],\n      [/tatacliq/, () => 'Tata CLiQ'],\n      [/meesho/, () => 'Meesho'],\n      [/snapdeal/, () => 'Snapdeal'],\n      [/bestbuy/, () => 'Best Buy'],\n      [/walmart/, () => 'Walmart'],\n      [/target\\.com/, () => 'Target'],\n      [/ebay/, () => 'eBay'],\n      [/etsy/, () => 'Etsy'],\n      [/apple\\.com/, () => 'Apple'],\n      [/samsung\\.com/, () => 'Samsung'],\n      [/oneplus/, () => 'OnePlus'],\n      [/mi\\.com|xiaomi/, () => 'Xiaomi'],\n      [/shopify/, () => 'Shopify Store'],\n    ];\n    for (const [re, label] of map) {\n      if (re.test(host)) return label(host);\n    }\n    const label = host.split('.').slice(-2, -1)[0] || host.split('.')[0];\n    return label ? label.charAt(0).toUpperCase() + label.slice(1) : host;\n  } catch (e) {\n    return null;\n  }\n}\n\nfunction serperGeoForHost(host) {\n  if (/\\.in$|amazon\\.in|flipkart|myntra|nykaa|ajio|croma|meesho|snapdeal|tatacliq/.test(host || '')) return { gl: 'in', hl: 'en' };\n  if (/\\.co\\.uk$|\\.uk$/.test(host || '')) return { gl: 'gb', hl: 'en' };\n  if (/\\.de$/.test(host || '')) return { gl: 'de', hl: 'de' };\n  if (/\\.fr$/.test(host || '')) return { gl: 'fr', hl: 'fr' };\n  if (/\\.ca$/.test(host || '')) return { gl: 'ca', hl: 'en' };\n  if (/\\.com\\.au$|\\.au$/.test(host || '')) return { gl: 'au', hl: 'en' };\n  return { gl: 'us', hl: 'en' };\n}\n\nfunction guessBrand(name, retailer) {\n  const brands = ['Sony', 'Samsung', 'Apple', 'Bose', 'JBL', 'Dyson', 'Nike', 'Adidas', 'LG', 'Philips', 'Canon', 'Nikon', 'Microsoft', 'Google', 'OnePlus', 'Xiaomi'];\n  for (const b of brands) {\n    if (new RegExp('\\\\b' + b + '\\\\b', 'i').test(String(name || ''))) return b;\n  }\n  return retailer || null;\n}\n\nfunction cleanTitle(title) {\n  return String(title || '')\n    .replace(/\\s*\\+\\s*free shipping.*$/i, '')\n    .replace(/\\s*[-|:]\\s*(Amazon\\.[^|]+|Flipkart|Buy Online|Price in India|Online at[^|]+|Shop Now|Official Store).*$/i, '')\n    .replace(/\\s*\\|\\s*(Amazon[^|]*|Flipkart[^|]*|Walmart[^|]*|Target[^|]*|Best Buy[^|]*|eBay[^|]*|Myntra[^|]*|Nykaa[^|]*)\\s*$/i, '')\n    .replace(/\\s*:\\s*(Amazon\\.[^:]*|Flipkart|Walmart|Target|Best Buy)(?::.*)?$/i, '')\n    .trim();\n}\n\nfunction cleanSerperTitle(title) {\n  return cleanTitle(String(title || '')\n    .replace(/\\s*[-|:]\\s*(Buy Online|Official Site).*$/i, '')\n    .replace(/\\.\\.\\.$/, '')\n    .trim());\n}\n\nfunction titleFromUrlPath(url) {\n  try {\n    const parts = new URL(url).pathname.split('/').filter(Boolean);\n    const slug = parts.find((p) => p.length > 8 && p.includes('-') && !/^[A-Z0-9]{10}$/i.test(p));\n    if (!slug) return '';\n    return slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');\n  } catch (e) {\n    return '';\n  }\n}\n\nfunction isJunkFeature(text) {\n  return /^(find a |recommendations|browsing history|sign in|log in|registry|video purchases|kindle|investor|accessibility|music library|customer service|your account|gift cards|sell on|cookie|privacy policy|terms of|subscribe|newsletter|free delivery|add to cart|buy now|shop all|shop by)/i.test(text)\n    || /^(amazon|flipkart|walmart|target|ebay|myntra|nykaa)\\s/i.test(text);\n}\n\nfunction isWeakTitle(title) {\n  const t = String(title || '').trim();\n  if (!t || t.length < 8) return true;\n  if (/^(Amazon|Flipkart|Shop)\\.?com?\\b/i.test(t)) return true;\n  if (/amazon\\.com|flipkart\\.com/i.test(t)) return true;\n  return false;\n}\n\nfunction isBadTitle(title) {\n  const t = String(title || '').trim();\n  if (isWeakTitle(t)) return true;\n  if (/^(access denied|robot check|sorry!?|page not found|not found|error|forbidden|503|502|403|404|just a moment|attention required|service unavailable|amazon\\.in|amazon\\.com)$/i.test(t)) return true;\n  if (/^amazon\\.(in|com)$/i.test(t)) return true;\n  return false;\n}\n\nfunction isBlockedPage(html, title) {\n  const h = String(html || '');\n  const hl = h.toLowerCase();\n  const t = String(title || '').trim();\n  if (isBadTitle(t)) return true;\n  if (/validatecaptcha|opfcaptcha|api-services-support@amazon|automated access to amazon|click the button below to continue shopping|to discuss automated access/i.test(hl)) return true;\n  if (/access denied|robot check|sorry, we just need to make sure/i.test(hl)) return true;\n  if (h.length > 0 && h.length < 600 && !/add to cart|productTitle|buy now|out of 5 stars/i.test(hl)) return true;\n  return false;\n}\n\nfunction extractShortCode(inputUrl) {\n  try {\n    const parts = new URL(inputUrl).pathname.split('/').filter(Boolean);\n    if (parts[0] === 'd' && parts[1]) return parts[1];\n    if (parts[0] === 'p' && parts[1]) return parts[1];\n    const asin = String(inputUrl).match(/\\/dp\\/([A-Z0-9]{10})/i);\n    if (asin) return asin[1];\n    const pid = String(inputUrl).match(/\\/p\\/([a-z0-9-]+)/i);\n    if (pid) return pid[1];\n    const idParam = String(inputUrl).match(/[?&](?:pid|id|sku|product_id)=([^&]+)/i);\n    if (idParam) return idParam[1];\n  } catch (e) {}\n  return '';\n}\n\nfunction pathSlugFromUrl(inputUrl) {\n  try {\n    const parts = new URL(inputUrl).pathname.split('/').filter(Boolean);\n    return parts.find((p) => p.length > 8 && p.includes('-') && !/^[A-Z0-9]{6,14}$/i.test(p)) || '';\n  } catch (e) {\n    return '';\n  }\n}\n\nfunction sanitizePrice(value) {\n  const s = String(value || '').trim();\n  if (!s || !/\\d/.test(s)) return null;\n  return s;\n}\n\nfunction extractPriceFromHtml(html, ld) {\n  const priceRaw = ld?.offers?.price\n    || (Array.isArray(ld?.offers) ? ld.offers[0]?.price : null)\n    || metaContent(html, 'product:price:amount')\n    || metaContent(html, 'og:price:amount')\n    || metaContent(html, 'twitter:data1');\n  const currency = ld?.offers?.priceCurrency || metaContent(html, 'product:price:currency') || metaContent(html, 'og:price:currency') || '';\n  const fromLd = sanitizePrice(priceRaw);\n  if (fromLd) return (currency ? currency + ' ' : '') + fromLd;\n  const ogStd = sanitizePrice(metaContent(html, 'og:price:standard_amount'));\n  if (ogStd) return ogStd;\n  const itemprop = String(html || '').match(/itemprop=[\"']price[\"'][^>]*content=[\"']([^\"']+)[\"']/i);\n  if (itemprop && sanitizePrice(itemprop[1])) return decodeHtml(itemprop[1]);\n  const money = String(html || '').match(/([₹$€£]\\s?[\\d,]+(?:\\.\\d{2})?)/);\n  if (money && sanitizePrice(money[1])) return money[1].replace(/\\s+/g, '');\n  return null;\n}\n\nfunction extractRatingFromHtml(html, ld) {\n  const ratingVal = ld?.aggregateRating?.ratingValue;\n  let rating = ratingVal ? String(ratingVal) + '/5' : null;\n  let reviewCount = ld?.aggregateRating?.reviewCount || ld?.aggregateRating?.ratingCount || null;\n  if (!rating) {\n    const m = String(html || '').match(/(\\d+(?:\\.\\d+)?)\\s*(?:\\/\\s*5|out of 5)\\s*stars?/i);\n    if (m) rating = m[1] + '/5';\n  }\n  if (!reviewCount) {\n    const rc = String(html || '').match(/(?:out of 5 stars|rating)[^\\d]{0,30}\\(?([\\d,]{2,})\\)?/i);\n    if (rc) reviewCount = rc[1].replace(/,/g, '');\n  }\n  if (reviewCount && Number(reviewCount) < 10 && !String(html || '').includes(reviewCount + ',')) {\n    reviewCount = null;\n  }\n  return { rating, reviewCount };\n}\n\nfunction pickProductSerperHit(organic, urlProbe, targetHost) {\n  const host = targetHost || hostFromUrl(urlProbe.split(' ').find((u) => u.startsWith('http')) || urlProbe);\n  for (const r of organic || []) {\n    const link = String(r.link || '');\n    const linkHost = hostFromUrl(link);\n    const t = cleanSerperTitle(r.title || '');\n    if (!t || isBadTitle(t)) continue;\n    if (/access denied|sign in|seller central|help center|community guidelines|login|cart empty/i.test(t + ' ' + link)) continue;\n    if (/\\/s\\?|search\\?|category\\/|gp\\/help|\\/help\\/|\\/collections\\//i.test(link)) continue;\n    if (host && linkHost && (linkHost === host || linkHost.endsWith('.' + host) || host.endsWith(linkHost))) {\n      return { ...r, cleanTitle: t };\n    }\n    if (/\\/dp\\/|\\/p\\/|\\/product\\/|\\/products\\/|\\/itm\\/|\\/d\\/[A-Za-z0-9]+/i.test(link)) {\n      return { ...r, cleanTitle: t };\n    }\n  }\n  for (const r of organic || []) {\n    const t = cleanSerperTitle(r.title || '');\n    if (t && !isBadTitle(t) && !/access denied|sign in|login page/i.test(t)) return { ...r, cleanTitle: t };\n  }\n  return null;\n}\n\nfunction buildExplanation(details) {\n  return buildProductExplanation(details).slice(0, 900);\n}\n\nfunction buildProductExplanation(details) {\n  const parts = [];\n  const name = details.name || 'This product';\n  const who = details.brand ? name + ' by ' + details.brand : name;\n  parts.push(who + (details.retailer ? ' — sold on ' + details.retailer : '') + '.');\n  if (details.price) parts.push('Listed price: ' + details.price + '.');\n  if (details.rating) {\n    parts.push('Store rating: ' + details.rating + (details.review_count ? ' (' + Number(details.review_count).toLocaleString('en-IN') + ' reviews on the store page)' : '') + '.');\n  }\n  if (details.description) parts.push(details.description);\n  if (details.features && details.features.length) {\n    parts.push('Notable features: ' + details.features.slice(0, 5).join('; ') + '.');\n  }\n  if (details.fetch_error && details.serper_fallback) {\n    parts.push('(Product page was partially blocked; details were recovered via web search.)');\n  }\n  return parts.join(' ').trim();\n}\n\nconst item = $input.first().json;\nlet url = String(item.product_url || '').trim();\nif (!url) throw new Error('Fetch Product URL: missing product_url.');\n\nconst fetchHeaders = {\n  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',\n  Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',\n  'Accept-Language': 'en-IN,en;q=0.9',\n  'Cache-Control': 'no-cache',\n};\n\nlet html = '';\nlet fetchError = null;\ntry {\n  const resp = await this.helpers.httpRequest({\n    method: 'GET',\n    url,\n    headers: fetchHeaders,\n    timeout: 30000,\n    json: false,\n  });\n  html = typeof resp === 'string' ? resp : (resp?.body || resp?.data || String(resp || ''));\n} catch (err) {\n  fetchError = String(err.message || err).slice(0, 200);\n}\n\nconst rawPageTitle = decodeHtml((html.match(/<title[^>]*>([^<]+)<\\/title>/i) || [])[1] || '');\nif (html && /https?:\\/\\/[^\"'\\s]+\\/dp\\/[A-Z0-9]{10}/i.test(html)) {\n  const dp = html.match(/https?:\\/\\/[^\"'\\s]+\\/dp\\/[A-Z0-9]{10}[^\"'\\s]*/i);\n  if (dp) {\n    try { url = new URL(dp[0]).href; } catch (e) {}\n  }\n}\n\nconst serperKey = String(item.serper_api_key || '').trim();\nlet serperHit = null;\nasync function serperSearch(q, extra) {\n  return this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://google.serper.dev/search',\n    headers: { 'X-API-KEY': serperKey, 'Content-Type': 'application/json' },\n    body: { q, num: 8, ...(extra || {}) },\n    json: true,\n    timeout: 15000,\n  });\n}\n\nasync function lookupProductViaSerper(productUrl, originalUrl, retailerHint) {\n  if (!serperKey) return null;\n  const probe = (productUrl + ' ' + originalUrl).toLowerCase();\n  const host = hostFromUrl(productUrl) || hostFromUrl(originalUrl);\n  const geo = serperGeoForHost(host);\n  const code = extractShortCode(originalUrl) || extractShortCode(productUrl);\n  const slug = pathSlugFromUrl(productUrl) || pathSlugFromUrl(originalUrl);\n  const asin = (productUrl.match(/\\/dp\\/([A-Z0-9]{10})/i) || [])[1];\n  const queries = [];\n  if (host && slug) queries.push(slug.replace(/-/g, ' ') + ' site:' + host);\n  if (host && asin) queries.push('site:' + host + ' ' + asin);\n  if (host && code) queries.push('site:' + host + ' ' + code);\n  if (originalUrl) queries.push('\"' + originalUrl + '\"');\n  if (originalUrl) queries.push(originalUrl);\n  if (productUrl && productUrl !== originalUrl) queries.push(productUrl);\n  if (slug && host) queries.push(slug.replace(/-/g, ' ') + ' buy site:' + host);\n\n  for (const q of [...new Set(queries.filter(Boolean))]) {\n    try {\n      const resp = await serperSearch.call(this, q, geo);\n      const hit = pickProductSerperHit(resp.organic || [], probe, host);\n      if (hit) return { hit, query: q };\n    } catch (e) {}\n  }\n  return null;\n}\n\nconst sourceUrl = String(item.product_url || '').trim();\nconst urlProbe = (url + ' ' + sourceUrl).toLowerCase();\nconst storeHost = hostFromUrl(url) || hostFromUrl(sourceUrl);\nconst serperGeo = serperGeoForHost(storeHost);\nlet retailer = retailerFromUrl(url) || retailerFromUrl(sourceUrl);\n\nconst pageBlocked = isBlockedPage(html, rawPageTitle);\nlet usedSerperProductLookup = false;\n\nif (pageBlocked) {\n  html = '';\n  fetchError = fetchError || 'Store blocked automated access — using search lookup for product details';\n}\n\nconst ld = pageBlocked ? null : parseJsonLd(html);\nlet title = cleanTitle(decodeHtml(ld?.name || metaContent(html, 'og:title') || metaContent(html, 'twitter:title') || rawPageTitle || ''));\nif (isBadTitle(title) && html) {\n  const h1 = decodeHtml((html.match(/<h1[^>]*>([\\s\\S]{8,220}?)<\\/h1>/i) || [])[1] || '');\n  if (h1 && !isBadTitle(h1)) title = cleanTitle(h1);\n}\nlet description = pageBlocked ? '' : decodeHtml(ld?.description || metaContent(html, 'og:description') || metaContent(html, 'description') || '');\n\nif (serperKey && (pageBlocked || isBadTitle(title) || !html || html.length < 800)) {\n  const lookup = await lookupProductViaSerper.call(this, url, sourceUrl, retailer);\n  if (lookup?.hit) {\n    usedSerperProductLookup = true;\n    serperHit = lookup.hit;\n    title = lookup.hit.cleanTitle || title;\n    if (lookup.hit.snippet) description = decodeHtml(lookup.hit.snippet);\n    if (lookup.hit.link && lookup.hit.link.startsWith('http') && !isBadTitle(lookup.hit.cleanTitle || '')) {\n      url = lookup.hit.link;\n    }\n  }\n}\n\nif (isBadTitle(title)) {\n  const slugTitle = titleFromUrlPath(url) || titleFromUrlPath(sourceUrl);\n  if (slugTitle && !isBadTitle(slugTitle)) title = slugTitle;\n}\n\nif (serperKey && isBadTitle(title)) {\n  try {\n    const resp = await serperSearch.call(this, sourceUrl || url, serperGeo);\n    const hit = pickProductSerperHit(resp.organic || [], urlProbe, storeHost);\n    if (hit) {\n      usedSerperProductLookup = true;\n      serperHit = hit;\n      title = hit.cleanTitle || title;\n      if (hit.snippet) description = decodeHtml(hit.snippet);\n      if (hit.link && hit.link.startsWith('http')) url = hit.link;\n    }\n  } catch (e) {}\n}\n\nif (serperKey && (!description || description.length < 50) && title && !isBadTitle(title)) {\n  try {\n    const resp = await serperSearch.call(this, title + ' product details', serperGeo);\n    const hit = (resp.organic || []).find((r) => (\n      r.snippet && r.title && !/community guidelines|seller central|product opportunity|sign in|access denied|login/i.test(r.title + r.snippet)\n    )) || (resp.organic || [])[0];\n    if (hit?.snippet && !/access denied/i.test(hit.snippet)) description = decodeHtml(hit.snippet);\n  } catch (e) {}\n}\n\ntitle = cleanTitle(title);\nif (isBadTitle(title)) {\n  const code = extractShortCode(sourceUrl) || extractShortCode(url);\n  title = code ? ((retailer || 'Online store') + ' product ' + code) : 'Product from link';\n  fetchError = fetchError || 'Could not read product page — review search uses limited product info';\n}\nlet price = extractPriceFromHtml(html, ld);\nconst ratingExtracted = extractRatingFromHtml(html, ld);\nlet rating = ratingExtracted.rating;\nlet reviewCount = ratingExtracted.reviewCount;\nif (serperHit?.rating && !rating) rating = String(serperHit.rating) + '/5';\nif (serperHit?.ratingCount && !reviewCount) reviewCount = String(serperHit.ratingCount);\nif (reviewCount && Number(reviewCount) < 50 && !ld?.aggregateRating?.reviewCount && !serperHit?.ratingCount) reviewCount = null;\nif (!price && pageBlocked === false && html) {\n  const priceM = html.match(/(?:Price|M\\.R\\.P\\.|Now)[^₹$€£]{0,80}([₹$€£][\\d,]+(?:\\.\\d{2})?)/i);\n  if (priceM) price = priceM[1];\n}\nlet brand = (typeof ld?.brand === 'object' ? ld.brand?.name : ld?.brand) || guessBrand(title, retailer);\nconst image = Array.isArray(ld?.image) ? ld.image[0] : (ld?.image || metaContent(html, 'og:image') || null);\n\nconst features = [];\nfor (const li of (html.match(/<li[^>]*>([\\s\\S]{10,140}?)<\\/li>/gi) || []).slice(0, 25)) {\n  const t = decodeHtml(li.replace(/<[^>]+>/g, ''));\n  if (t.length > 12 && t.length < 140 && !/^\\d+$/.test(t) && !isJunkFeature(t)) features.push(t);\n}\nconst uniqueFeatures = [...new Set(features)].slice(0, 6);\n\nif (!title && url.includes('amazon') && /\\/dp\\/([A-Z0-9]{10})/i.test(url)) {\n  title = 'Amazon product ' + url.match(/\\/dp\\/([A-Z0-9]{10})/i)[1];\n}\n\nconst finalHost = hostFromUrl(url) || hostFromUrl(sourceUrl);\nif (!retailer) retailer = retailerFromUrl(url) || retailerFromUrl(sourceUrl) || (finalHost ? retailerFromUrl('https://' + finalHost + '/') : null);\nif (!retailer && /amazon|amzn\\.in/.test(urlProbe)) {\n  retailer = /amzn\\.in|amazon\\.in/.test(urlProbe) ? 'Amazon India' : 'Amazon';\n}\n\nconst productDetails = {\n  source_url: String(item.product_url || '').trim(),\n  resolved_url: url !== String(item.product_url || '').trim() ? url : null,\n  store_host: finalHost || null,\n  retailer: retailer || null,\n  name: title || 'Product',\n  brand: brand || null,\n  price: price || null,\n  rating: rating || null,\n  review_count: reviewCount ? String(reviewCount) : null,\n  description: description.slice(0, 600),\n  features: uniqueFeatures,\n  image: image || null,\n  fetch_error: fetchError,\n  page_blocked: pageBlocked,\n  serper_fallback: usedSerperProductLookup || Boolean(serperHit && (!html || html.length < 800)),\n  product_explanation: '',\n};\n\nproductDetails.product_explanation = buildProductExplanation(productDetails);\n\nconst explanation = buildExplanation(productDetails);\nconst searchName = cleanTitle(title) || 'product reviews';\nconst userNote = String(item.text_query || '').trim();\nconst extraContext = userNote && userNote !== 'Product from link' ? userNote + '. ' : '';\n\nreturn [{\n  json: {\n    ...item,\n    text_query: searchName,\n    identification_source: 'product_url',\n    review_context: extraContext + explanation,\n    product_details: productDetails,\n    product: {\n      product_name: searchName.slice(0, 200),\n      brand: brand || null,\n      category: retailer ? 'product/' + String(retailer).toLowerCase() : 'product',\n      model_variant: null,\n      confidence: isBadTitle(searchName) ? 50 : (usedSerperProductLookup ? 88 : (title ? 95 : 60)),\n      visual_cues: [],\n      search_queries: [\n        searchName + ' reviews',\n        searchName + ' customer reviews',\n        (brand ? brand + ' ' : '') + searchName.split(' ').slice(0, 5).join(' ') + ' review',\n        storeHost ? searchName.split(' ').slice(0, 6).join(' ') + ' site:' + (finalHost || storeHost) + ' reviews' : null,\n      ].filter(Boolean).filter((q) => !/^access denied\\b/i.test(q)),\n    },\n  },\n}];"
+      }
+    },
+    {
+      "id": "c3000000-0012-4000-8000-00000000001a",
+      "name": "Identify Product (Text)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        480
+      ],
+      "parameters": {
+        "jsCode": "function cleanKey(key) {\n  return String(key || '').trim().replace(/^Bearer\\s+/i, '');\n}\nfunction isOpenRouterKey(key) {\n  return /^sk-or-/i.test(cleanKey(key));\n}\nfunction chatCompletionsUrl(apiKey) {\n  return isOpenRouterKey(apiKey)\n    ? 'https://openrouter.ai/api/v1/chat/completions'\n    : 'https://api.openai.com/v1/chat/completions';\n}\nfunction normalizeChatModel(model, apiKey) {\n  const m = String(model || $env.OPENAI_MODEL || $env.OPENROUTER_MODEL || 'gpt-4o-mini').trim();\n  if (isOpenRouterKey(apiKey)) {\n    return m.includes('/') ? m : 'openai/' + m.replace(/^openai\\//, '');\n  }\n  return m.replace(/^openai\\//, '');\n}\n\n\nconst item = $input.first().json;\n\nif (item.product_name) {\n  const q = item.product_name + (item.brand ? ' ' + item.brand : '');\n  return [{\n    json: {\n      ...item,\n      identification_source: 'explicit',\n      product: {\n        product_name: item.product_name,\n        brand: item.brand || null,\n        category: item.category || '',\n        model_variant: null,\n        confidence: 100,\n        visual_cues: [],\n        search_queries: [\n          item.product_name + ' reviews',\n          item.product_name + ' customer reviews',\n          (item.brand ? item.brand + ' ' : '') + item.product_name + ' reddit',\n        ].filter(Boolean),\n      },\n    },\n  }];\n}\n\nconst apiKey = cleanKey(item.openrouter_api_key);\nconst model = normalizeChatModel(item.openrouter_model || $env.OPENAI_MODEL || $env.OPENROUTER_MODEL || 'gpt-4o-mini', apiKey);\nconst query = item.text_query || item.review_context;\nif (!query) throw new Error('Identify Product: missing text_query or product_name.');\n\nconst systemPrompt = 'JSON only: product_name, brand, category, confidence, search_queries(2-3 strings).';\nconst userPrompt = query;\n\nasync function identifyOnce(maxTokens) {\n  return this.helpers.httpRequest({\n    method: 'POST',\n    url: chatCompletionsUrl(apiKey),\n    headers: {\n      Authorization: 'Bearer ' + apiKey,\n      'Content-Type': 'application/json',\n      'X-Title': 'Customer Review Responder',\n    },\n    body: {\n      model,\n      temperature: 0.1,\n      max_tokens: maxTokens,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: systemPrompt },\n        { role: 'user', content: userPrompt },\n      ],\n    },\n    json: true,\n    timeout: 60000,\n  });\n}\n\nlet response = null;\nlet lastErr = null;\nfor (const maxTokens of [80, 60, 40]) {\n  try {\n    response = await identifyOnce.call(this, maxTokens);\n    break;\n  } catch (err) {\n    lastErr = err;\n    const msg = String(err.message || err);\n    if (!msg.includes('402')) throw err;\n  }\n}\nlet parsed = null;\nif (response) {\n  try {\n    const raw = response.choices?.[0]?.message?.content;\n    if (raw) parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;\n  } catch (e) {}\n}\n\nif (!parsed) {\n  const msg = String(lastErr?.message || lastErr || '');\n  if (msg.includes('401')) throw new Error('OpenRouter 401: invalid API key.');\n  parsed = {\n    product_name: query,\n    brand: null,\n    category: 'topic',\n    model_variant: null,\n    confidence: 60,\n    search_queries: [query, query + ' reviews', query + ' opinions'],\n  };\n}\n\nreturn [{\n  json: {\n    ...item,\n    identification_source: parsed.confidence >= 70 ? 'text' : 'text_fallback',\n    product: {\n      product_name: String(parsed.product_name || query).trim(),\n      brand: parsed.brand || null,\n      category: String(parsed.category || '').trim(),\n      model_variant: parsed.model_variant || null,\n      confidence: Number(parsed.confidence || 60),\n      visual_cues: [],\n      search_queries: parsed.search_queries || [query + ' reviews'],\n    },\n  },\n}];"
+      }
+    },
+    {
+      "id": "c3000000-0014-4000-8000-000000000014",
+      "name": "Search Agent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        200
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst product = item.product || {};\nconst name = String(product.product_name || '').trim();\nif (!name) throw new Error('Search Agent: missing product_name after identification.');\n\nfunction isBlockedProductName(n) {\n  return /^(access denied|robot check|sorry!?|page not found|forbidden|amazon\\.in|amazon\\.com)$/i.test(String(n || '').trim());\n}\n\nconst serperKey = String(item.serper_api_key || '').trim();\nconst sources = new Set((item.search_sources || []).map((s) => String(s).toLowerCase()));\nconst limit = Math.min(Math.max(Number(item.max_results_per_source || 5), 1), 10);\nconst rawQuery = String(item.text_query || '').trim();\nconst pd = item.product_details || {};\n\nfunction isBadQuery(q) {\n  const s = String(q || '').trim();\n  return !s || /^access denied\\b/i.test(s) || /^robot check\\b/i.test(s);\n}\n\nconst queries = [...new Set([\n  ...(rawQuery && !isBlockedProductName(rawQuery) ? [rawQuery] : []),\n  ...(product.search_queries || []),\n  isBlockedProductName(name) ? null : name + ' reviews',\n  isBlockedProductName(name) ? null : name + ' customer reviews',\n  isBlockedProductName(name) ? null : (product.brand ? product.brand + ' ' : '') + name + ' review',\n  (pd.store_host && !isBlockedProductName(name))\n    ? name.split(' ').slice(0, 6).join(' ') + ' site:' + pd.store_host + ' reviews'\n    : null,\n  (pd.retailer && /amazon/i.test(pd.retailer) && !isBlockedProductName(name))\n    ? name.split(' ').slice(0, 6).join(' ') + ' site:amazon.in reviews'\n    : null,\n  (pd.retailer && /flipkart/i.test(pd.retailer) && !isBlockedProductName(name))\n    ? name.split(' ').slice(0, 6).join(' ') + ' site:flipkart.com reviews'\n    : null,\n].map((q) => String(q || '').trim()).filter((q) => q && !isBadQuery(q)))].slice(0, 6);\n\nif (!queries.length) {\n  throw new Error('Could not identify product from link (store blocked access). Send the product name as text, e.g. Dettol disinfectant 1L reviews');\n}\n\nfunction pickPrimaryQuery(allQueries, raw, subject) {\n  const reviewQuery = allQueries.find((q) => /review|opinion|rating|feedback|complaint/i.test(q));\n  if (reviewQuery) return reviewQuery;\n  const bare = String(raw || subject || '').trim();\n  if (bare && bare.split(/\\s+/).length <= 3 && !/review|opinion|rating/i.test(bare)) {\n    return bare + ' reviews and opinions';\n  }\n  return allQueries[0] || (subject + ' reviews');\n}\n\nconst primaryQuery = pickPrimaryQuery(queries, rawQuery, name);\nlet serperValid = Boolean(serperKey);\n\nfunction decodeHtml(s) {\n  return String(s || '')\n    .replace(/&amp;/g, '&').replace(/&quot;/g, '\"').replace(/&#39;/g, \"'\").replace(/&lt;/g, '<').replace(/&gt;/g, '>')\n    .replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();\n}\n\nfunction parseDdgHtml(html) {\n  const results = [];\n  const blocks = String(html || '').split(/result__body/i).slice(1);\n  for (const block of blocks) {\n    if (results.length >= limit) break;\n    let link = '';\n    let title = '';\n    const directM = block.match(/class=\"result__a\"[^>]*href=\"(https?:\\/\\/[^\"]+)\"[^>]*>([^<]+)<\\/a>/i);\n    const uddgM = block.match(/class=\"result__a\"[^>]*href=\"[^\"]*uddg=([^\"&]+)\"[^>]*>([\\s\\S]*?)<\\/a>/i);\n    if (directM) {\n      link = directM[1];\n      title = decodeHtml(directM[2]);\n    } else if (uddgM) {\n      link = uddgM[1];\n      try { link = decodeURIComponent(link); } catch (e) {}\n      title = decodeHtml(uddgM[2]);\n    }\n    const snipM = block.match(/class=\"result__snippet\"[^>]*>([\\s\\S]*?)<\\/a>/i);\n    const snippet = snipM ? decodeHtml(snipM[1]) : '';\n    if (title) results.push({ title, snippet, link, source: '' });\n  }\n  return results;\n}\n\nasync function duckDuckGoSearch(query) {\n  try {\n    const raw = await this.helpers.httpRequest({\n      method: 'POST',\n      url: 'https://html.duckduckgo.com/html/',\n      headers: {\n        'User-Agent': 'Mozilla/5.0 (compatible; CustomerReviewResponder/1.0)',\n        'Content-Type': 'application/x-www-form-urlencoded',\n      },\n      body: 'q=' + encodeURIComponent(query) + '&b=',\n      timeout: 20000,\n    });\n    const html = typeof raw === 'string' ? raw : (raw?.body || raw?.data || String(raw || ''));\n    return parseDdgHtml(html);\n  } catch (err) {\n    return [];\n  }\n}\n\nasync function serperSearch(query, type) {\n  if (!serperKey) return { ok: false, error: 'Missing serper_api_key', results: [] };\n  const url = type === 'news' ? 'https://google.serper.dev/news' : 'https://google.serper.dev/search';\n  try {\n    const resp = await this.helpers.httpRequest({\n      method: 'POST',\n      url,\n      headers: { 'X-API-KEY': serperKey, 'Content-Type': 'application/json' },\n      body: { q: query, num: limit },\n      json: true,\n      timeout: 15000,\n    });\n    const items = type === 'news' ? (resp.news || []) : (resp.organic || []);\n    return {\n      ok: true,\n      query,\n      provider: 'serper',\n      results: items.slice(0, limit).map((r) => ({\n        title: r.title || '',\n        snippet: r.snippet || r.description || '',\n        link: r.link || r.url || '',\n        source: r.source || '',\n        date: r.date || null,\n      })),\n    };\n  } catch (err) {\n    const msg = String(err.message || err);\n    if (/403|401|Unauthorized/i.test(msg)) serperValid = false;\n    return { ok: false, query, error: msg.slice(0, 200), results: [] };\n  }\n}\n\nasync function webSearch(query, label, opts) {\n  const site = opts?.site || '';\n  const type = opts?.type || 'search';\n  const q = site ? ('site:' + site + ' ' + query) : query;\n  let serperResult = null;\n\n  if (serperKey && serperValid) {\n    serperResult = await serperSearch.call(this, q, type);\n    if (serperResult.ok && serperResult.results.length) {\n      return { ...serperResult, source: label, site: site || null };\n    }\n  }\n\n  const ddgQuery = type === 'news' ? (query + ' news') : q;\n  const ddgResults = await duckDuckGoSearch.call(this, ddgQuery);\n  return {\n    ok: ddgResults.length > 0,\n    source: label,\n    query: ddgQuery,\n    provider: ddgResults.length ? 'duckduckgo' : (serperResult?.provider || 'none'),\n    site: site || null,\n    serper_error: serperResult?.error || (serperKey && !serperValid ? 'Serper unauthorized — using DuckDuckGo fallback' : null),\n    results: ddgResults,\n  };\n}\n\nasync function redditSearch() {\n  try {\n    const resp = await this.helpers.httpRequest({\n      method: 'GET',\n      url: 'https://api.pullpush.io/reddit/search/submission/?q=' + encodeURIComponent(primaryQuery) + '&size=' + limit + '&sort=desc&sort_type=score',\n      headers: { 'User-Agent': 'CustomerReviewResponder/1.0' },\n      json: true,\n      timeout: 25000,\n    });\n    const posts = resp?.data || [];\n    if (posts.length) {\n      return {\n        ok: true,\n        source: 'reddit',\n        query: primaryQuery,\n        provider: 'pullpush',\n        results: posts.slice(0, limit).map((p) => ({\n          title: p.title || '',\n          snippet: (p.selftext || '').slice(0, 400),\n          link: p.url || ('https://reddit.com' + (p.permalink || '')),\n          source: 'reddit/' + (p.subreddit || ''),\n          score: p.score,\n          num_comments: p.num_comments,\n        })),\n      };\n    }\n  } catch (err) {}\n\n  const ddgResults = await duckDuckGoSearch.call(this, 'site:reddit.com ' + primaryQuery);\n  return {\n    ok: ddgResults.length > 0,\n    source: 'reddit',\n    query: primaryQuery,\n    provider: 'duckduckgo',\n    results: ddgResults,\n  };\n}\n\nconst tasks = [];\nif (sources.has('google')) tasks.push(webSearch.call(this, primaryQuery, 'google', {}));\nif (sources.has('news')) tasks.push(webSearch.call(this, primaryQuery, 'news', { type: 'news' }));\nif (sources.has('reddit')) tasks.push(redditSearch.call(this));\nif (sources.has('twitter')) tasks.push(webSearch.call(this, primaryQuery, 'twitter', { site: 'x.com' }));\nif (sources.has('youtube')) tasks.push(webSearch.call(this, primaryQuery, 'youtube', { site: 'youtube.com' }));\nif (sources.has('amazon')) tasks.push(webSearch.call(this, primaryQuery, 'amazon', { site: 'amazon.com' }));\nif (sources.has('flipkart')) tasks.push(webSearch.call(this, primaryQuery, 'flipkart', { site: 'flipkart.com' }));\nif (sources.has('linkedin')) tasks.push(webSearch.call(this, primaryQuery, 'linkedin', { site: 'linkedin.com' }));\nif (sources.has('forums')) tasks.push(webSearch.call(this, primaryQuery, 'forums', { site: 'trustpilot.com' }));\n\nconst settled = await Promise.allSettled(tasks);\nconst searchResults = settled.map((s, i) => {\n  if (s.status === 'fulfilled') return s.value;\n  return { ok: false, source: 'unknown_' + i, error: String(s.reason?.message || s.reason).slice(0, 200), results: [] };\n});\n\nlet totalHits = searchResults.reduce((n, r) => n + (r.results?.length || 0), 0);\n\nif (totalHits === 0) {\n  const fallback = await webSearch.call(this, primaryQuery, 'google_fallback', {});\n  if (fallback.results?.length) {\n    searchResults.push(fallback);\n    totalHits = fallback.results.length;\n  }\n}\n\nconst searchErrors = searchResults\n  .filter((r) => r.serper_error || (!r.ok && r.error))\n  .map((r) => ({ source: r.source, error: r.serper_error || r.error }));\n\nreturn [{\n  json: {\n    ...item,\n    search: {\n      primary_query: primaryQuery,\n      all_queries: queries,\n      serper_enabled: Boolean(serperKey),\n      serper_valid: serperValid,\n      fallback_used: searchResults.some((r) => r.provider === 'duckduckgo' || r.provider === 'pullpush'),\n      search_errors: searchErrors,\n      sources_requested: [...sources],\n      results_by_source: searchResults,\n      total_results: totalHits,\n      searched_at: new Date().toISOString(),\n    },\n  },\n}];"
+      }
+    },
+    {
+      "id": "c3000000-0015-4000-8000-000000000015",
+      "name": "Collect Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        200
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst blocks = item.search?.results_by_source || [];\n\nconst snippets = [];\nfor (const block of blocks) {\n  for (const r of block.results || []) {\n    snippets.push({\n      source: block.source || 'unknown',\n      title: r.title || '',\n      snippet: r.snippet || '',\n      link: r.link || '',\n      meta: {\n        site: r.source || block.site || null,\n        date: r.date || null,\n        score: r.score ?? null,\n        num_comments: r.num_comments ?? null,\n      },\n    });\n  }\n}\n\nconst bySource = {};\nfor (const s of snippets) {\n  bySource[s.source] = bySource[s.source] || [];\n  bySource[s.source].push(s);\n}\n\nreturn [{\n  json: {\n    ...item,\n    collected: {\n      snippet_count: snippets.length,\n      snippets: snippets.slice(0, 60),\n      by_source: bySource,\n      source_counts: Object.fromEntries(Object.entries(bySource).map(([k, v]) => [k, v.length])),\n    },\n  },\n}];"
+      }
+    },
+    {
+      "id": "c3000000-0016-4000-8000-000000000016",
+      "name": "AI Analyzer",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        200
+      ],
+      "parameters": {
+        "jsCode": "function cleanKey(key) {\n  return String(key || '').trim().replace(/^Bearer\\s+/i, '');\n}\nfunction isOpenRouterKey(key) {\n  return /^sk-or-/i.test(cleanKey(key));\n}\nfunction chatCompletionsUrl(apiKey) {\n  return isOpenRouterKey(apiKey)\n    ? 'https://openrouter.ai/api/v1/chat/completions'\n    : 'https://api.openai.com/v1/chat/completions';\n}\nfunction normalizeChatModel(model, apiKey) {\n  const m = String(model || $env.OPENAI_MODEL || $env.OPENROUTER_MODEL || 'gpt-4o-mini').trim();\n  if (isOpenRouterKey(apiKey)) {\n    return m.includes('/') ? m : 'openai/' + m.replace(/^openai\\//, '');\n  }\n  return m.replace(/^openai\\//, '');\n}\n\nfunction cleanLine(text) {\n  return String(text || '').replace(/\\s+/g, ' ').trim();\n}\n\nfunction looksLikeTitle(line) {\n  return /^[A-Z0-9][^.!?]{0,120}(\\.{3}|\\?|:|$)/.test(line) && line.split(' ').length < 14;\n}\n\nfunction bestInsight(s) {\n  const snip = cleanLine(s.snippet);\n  if (snip.length >= 30) {\n    const parts = snip.split(/[.!?]+/).map(cleanLine).filter((x) => x.length >= 25 && !looksLikeTitle(x));\n    if (parts.length) return parts[0].slice(0, 160);\n    return snip.slice(0, 160);\n  }\n  const title = cleanLine(s.title);\n  return title.length >= 20 ? title.slice(0, 160) : '';\n}\n\nfunction localAnalyze(snippets, productName) {\n  const POS = /\\b(excellent|outstanding|great|good|love|best|amazing|comfortable|recommend|worth|impressive|superb|fantastic|solid|premium|clear|powerful|reliable|sleek|lightweight|comfort|noise cancellation|anc|sound quality|battery)\\b/i;\n  const NEG = /\\b(bad|poor|expensive|overpriced|disappoint|issue|problem|complaint|uncomfortable|not worth|concern|weak|bulky|cheap|break|fail|durability|hot|warm|heavy|flaw|returned|refund|overhyped)\\b/i;\n\n  const praise = [];\n  const complaints = [];\n  const seenP = new Set();\n  const seenC = new Set();\n  let posScore = 0;\n  let negScore = 0;\n\n  for (const s of snippets.slice(0, 24)) {\n    const blob = cleanLine((s.title || '') + ' ' + (s.snippet || ''));\n    if (!blob) continue;\n    const posHits = (blob.match(POS) || []).length;\n    const negHits = (blob.match(NEG) || []).length;\n    posScore += posHits;\n    negScore += negHits;\n\n    const line = bestInsight(s);\n    if (!line || line.length < 28 || /^[+-]\\s/.test(line)) continue;\n\n    if (posHits > 0 && posHits >= negHits && !seenP.has(line)) {\n      seenP.add(line);\n      praise.push(line);\n      continue;\n    }\n    if (negHits > 0 && !seenC.has(line) && !seenP.has(line)) {\n      seenC.add(line);\n      complaints.push(line);\n    }\n  }\n\n  const total = posScore + negScore;\n  let sentiment = 'mixed';\n  let score = 55;\n  if (total > 0) {\n    score = Math.min(95, Math.max(15, Math.round((posScore / total) * 100)));\n    if (score >= 68) sentiment = 'positive';\n    else if (score <= 38) sentiment = 'negative';\n  } else if (praise.length > complaints.length * 2) {\n    sentiment = 'positive';\n    score = 72;\n  } else if (complaints.length > praise.length * 2) {\n    sentiment = 'negative';\n    score = 32;\n  }\n\n  const rating = score >= 78 ? 4.5 : score >= 65 ? 4 : score >= 50 ? 3.5 : score >= 35 ? 3 : 2.5;\n  const name = productName || 'this product';\n  const topPraise = praise[0] || '';\n  const topComplaint = complaints.find((c) => c !== topPraise) || complaints[0] || '';\n\n  let summary = '';\n  if (topPraise && topComplaint) {\n    summary = 'Customer feedback on ' + name + ' is ' + sentiment + '. Buyers praise ' + topPraise.toLowerCase().replace(/\\.$/, '') + ', though some report ' + topComplaint.toLowerCase().replace(/\\.$/, '') + '.';\n  } else if (topPraise) {\n    summary = 'Customer feedback on ' + name + ' is predominantly positive across ' + snippets.length + ' sources, especially regarding ' + topPraise.toLowerCase().replace(/\\.$/, '') + '.';\n  } else if (topComplaint) {\n    summary = 'Customer feedback on ' + name + ' raises concerns, particularly about ' + topComplaint.toLowerCase().replace(/\\.$/, '') + '.';\n  } else {\n    summary = 'Based on ' + snippets.length + ' review sources, overall sentiment for ' + name + ' appears ' + sentiment + '.';\n  }\n\n  const buyer = score >= 68\n    ? 'Recommended for most buyers — strengths outweigh reported drawbacks for typical use.'\n    : score <= 38\n    ? 'Consider alternatives unless the noted strengths specifically match your priorities.'\n    : 'Worth considering if the praised features matter to you — review complaints before buying.';\n\n  return {\n    overall_sentiment: sentiment,\n    sentiment_score: score,\n    estimated_rating: Math.round(rating * 2) / 2,\n    summary,\n    top_praise: praise.slice(0, 5),\n    top_complaints: complaints.slice(0, 5),\n    buyer_recommendation: buyer,\n    suggested_responses: [],\n    data_quality: { coverage: snippets.length >= 15 ? 'good' : 'moderate', confidence: Math.min(80, 45 + Math.min(snippets.length, 20)), gaps: [] },\n    key_quotes: snippets.slice(0, 3).filter((s) => cleanLine(s.snippet)).map((s) => ({\n      text: cleanLine(s.snippet).slice(0, 120),\n      source: s.source || 'web',\n      sentiment: POS.test(s.snippet) && !NEG.test(s.snippet) ? 'positive' : NEG.test(s.snippet) ? 'negative' : 'neutral',\n    })),\n    analysis_method: 'snippet_intelligence',\n  };\n}\n\nfunction parseJsonLoose(raw) {\n  if (!raw) return null;\n  if (typeof raw === 'object') return raw;\n  let s = String(raw).trim();\n  try { return JSON.parse(s); } catch (e) {}\n  const BT = String.fromCharCode(96);\n  s = s.replace(new RegExp(BT + BT + BT + 'json', 'gi'), '').replace(new RegExp(BT + BT + BT, 'g'), '').trim();\n  try { return JSON.parse(s); } catch (e) {}\n  const start = s.indexOf('{');\n  if (start >= 0) {\n    s = s.slice(start);\n    for (const suffix of ['', '}', '\"}', '\"]}', 'null]}', '\"]}']) {\n      try { return JSON.parse(s + suffix); } catch (e2) {}\n    }\n  }\n  return null;\n}\n\nfunction normalizeAnalysis(a) {\n  if (!a || typeof a !== 'object') return null;\n  const out = { ...a };\n  let score = Number(out.sentiment_score);\n  if (Number.isFinite(score) && score > 0 && score <= 1) score = Math.round(score * 100);\n  if (!Number.isFinite(score)) score = 55;\n  out.sentiment_score = Math.min(100, Math.max(0, Math.round(score)));\n  if (!out.overall_sentiment) {\n    out.overall_sentiment = out.sentiment_score >= 68 ? 'positive' : out.sentiment_score <= 38 ? 'negative' : 'mixed';\n  }\n  out.top_praise = (out.top_praise || []).map(cleanLine).filter((x) => x && !looksLikeTitle(x)).slice(0, 5);\n  out.top_complaints = (out.top_complaints || []).map(cleanLine).filter(Boolean).slice(0, 5);\n  out.summary = cleanLine(out.summary);\n  out.buyer_recommendation = cleanLine(out.buyer_recommendation);\n  return out;\n}\n\nfunction mergeAnalysis(ai, local) {\n  const a = normalizeAnalysis(ai) || {};\n  const l = local || {};\n  const praise = (a.top_praise && a.top_praise.length) ? a.top_praise : l.top_praise;\n  const complaints = (a.top_complaints && a.top_complaints.length) ? a.top_complaints : l.top_complaints;\n  return {\n    overall_sentiment: a.overall_sentiment || l.overall_sentiment,\n    sentiment_score: a.sentiment_score ?? l.sentiment_score,\n    estimated_rating: a.estimated_rating ?? l.estimated_rating,\n    summary: (a.summary && a.summary.length > 40) ? a.summary : l.summary,\n    top_praise: praise || [],\n    top_complaints: complaints || [],\n    buyer_recommendation: (a.buyer_recommendation && a.buyer_recommendation.length > 20) ? a.buyer_recommendation : l.buyer_recommendation,\n    suggested_responses: a.suggested_responses || l.suggested_responses || [],\n    data_quality: a.data_quality || l.data_quality,\n    key_quotes: (a.key_quotes && a.key_quotes.length) ? a.key_quotes : l.key_quotes,\n    analysis_method: a.analysis_method || (a.summary ? 'ai+snippets' : l.analysis_method),\n  };\n}\n\nconst item = $input.first().json;\nconst apiKey = cleanKey(item.openrouter_api_key);\nconst model = normalizeChatModel(item.openrouter_model || $env.OPENAI_MODEL || $env.OPENROUTER_MODEL || 'gpt-4o-mini', apiKey);\nconst product = item.product || {};\nconst snippets = item.collected?.snippets || [];\nconst subject = product.product_name || item.text_query || 'Unknown';\n\nconst local = localAnalyze(snippets, subject);\n\nconst systemPrompt = 'Review analyst. JSON only: overall_sentiment, sentiment_score(0-100), estimated_rating, summary, top_praise[], top_complaints[], buyer_recommendation.';\n\nfunction buildCompactPrompt(limit) {\n  const ctx = snippets.slice(0, limit).map((s, i) => (\n    '[' + (i + 1) + '] ' + cleanLine(String(s.snippet || s.title || '')).slice(0, 130)\n  )).join('\\n');\n  const pageInfo = String(item.review_context || item.product_details?.description || '').slice(0, 350);\n  return 'Product: ' + subject + (pageInfo ? '\\nPage info: ' + pageInfo : '') + '\\nReview excerpts:\\n' + ctx;\n}\n\nasync function analyzeOnce(maxTokens, snippetLimit) {\n  return this.helpers.httpRequest({\n    method: 'POST',\n    url: chatCompletionsUrl(apiKey),\n    headers: {\n      Authorization: 'Bearer ' + apiKey,\n      'Content-Type': 'application/json',\n      'X-Title': 'Customer Review Responder',\n    },\n    body: {\n      model,\n      temperature: 0.2,\n      max_tokens: maxTokens,\n      response_format: { type: 'json_object' },\n      messages: [\n        { role: 'system', content: systemPrompt },\n        { role: 'user', content: buildCompactPrompt(snippetLimit) },\n      ],\n    },\n    json: true,\n    timeout: 90000,\n  });\n}\n\nlet response = null;\nlet aiParsed = null;\nfor (const attempt of [{ max: 100, n: 4 }, { max: 80, n: 3 }, { max: 60, n: 2 }]) {\n  try {\n    response = await analyzeOnce.call(this, attempt.max, attempt.n);\n    aiParsed = parseJsonLoose(response.choices?.[0]?.message?.content);\n    if (aiParsed && aiParsed.summary) break;\n  } catch (err) {\n    const msg = String(err.message || err);\n    if (msg.includes('401')) throw new Error('OpenRouter 401: invalid API key.');\n    if (!msg.includes('402')) break;\n  }\n}\n\nconst analysis = mergeAnalysis(aiParsed, local);\n\nreturn [{\n  json: {\n    ...item,\n    analysis: {\n      ...analysis,\n      model: (response && response.model) || model,\n      analyzed_at: new Date().toISOString(),\n    },\n  },\n}];"
+      }
+    },
+    {
+      "id": "c3000000-0017-4000-8000-000000000017",
+      "name": "Generate Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        200
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst p = item.product || {};\nconst a = item.analysis || {};\nconst pd = item.product_details || {};\nconst search = item.search || {};\nconst collected = item.collected || {};\n\nfunction bullet(arr) {\n  return (arr || []).map((x) => '• ' + x).join('\\n') || '• None noted';\n}\n\nfunction fmtResponses(arr) {\n  return (arr || []).map((r) => '▸ ' + (r.scenario || 'General') + '\\n  ' + (r.response || '')).join('\\n\\n') || '• None generated';\n}\n\nconst fromImage = item.identification_source === 'vision' || pd.source === 'image';\nconst fromLink = Boolean(pd.source_url);\nconst detailHeading = fromImage ? '## Product Details (from photo)' : '## Product Details (from link)';\n\nconst productDetailMd = pd.name ? [\n  '## About This Product',\n  pd.product_explanation || pd.description || '',\n  '',\n  detailHeading,\n  fromImage ? '**Identified from:** customer photo' + (pd.identification_confidence ? ' (confidence: ' + pd.identification_confidence + '%)' : '') : '',\n  pd.retailer ? '**Store:** ' + pd.retailer : '',\n  pd.price ? '**Price:** ' + pd.price : '',\n  pd.rating ? '**Store rating:** ' + pd.rating + (pd.review_count ? ' (' + pd.review_count + ' reviews)' : '') : '',\n  pd.description && pd.product_explanation && pd.description !== pd.product_explanation ? '**Visible details:** ' + pd.description : '',\n  pd.features?.length ? '**Features / cues:**\\n' + bullet(pd.features.slice(0, 6)) : '',\n  pd.source_url ? '**Link:** ' + pd.source_url : '',\n].filter(Boolean).join('\\n') : '';\n\nconst reportMarkdown = [\n  '# Customer Review Report',\n  '',\n  '**Product:** ' + (p.product_name || 'Unknown'),\n  '**Brand:** ' + (p.brand || 'N/A'),\n  '**Category:** ' + (p.category || 'N/A'),\n  '**Generated:** ' + new Date().toISOString(),\n  '',\n  productDetailMd,\n  productDetailMd ? '' : null,\n  '## Customer Review Analysis',\n  a.summary || 'No summary available.',\n  '',\n  '## Sentiment Overview',\n  '- Overall: **' + (a.overall_sentiment || 'unknown') + '**',\n  '- Sentiment score: **' + (a.sentiment_score ?? 'N/A') + '/100**',\n  '- Est. rating: **' + (a.estimated_rating ?? 'N/A') + '/5**',\n  '',\n  '## Top Praise',\n  bullet(a.top_praise),\n  '',\n  '## Top Complaints',\n  bullet(a.top_complaints),\n  '',\n  '## Buyer Recommendation',\n  a.buyer_recommendation || 'Insufficient data.',\n  '',\n  '## Suggested Review Responses',\n  fmtResponses(a.suggested_responses),\n  '',\n  '## Data Coverage',\n  '- Reviews analyzed from ' + Object.keys(collected.source_counts || {}).length + ' platforms',\n  '',\n  '## Key Quotes',\n  ...(a.key_quotes || []).slice(0, 5).map((q) => '> \"' + (q.text || '') + '\" — _' + (q.source || '') + '_ (' + (q.sentiment || '') + ')'),\n].filter(Boolean).join('\\n');\n\nconst detailTg = pd.name ? [\n  fromImage ? '📷 Identified from Photo' : '📦 About This Product',\n  pd.product_explanation ? '📖 ' + pd.product_explanation.slice(0, 480) : (pd.description ? 'ℹ️ ' + pd.description.slice(0, 320) : ''),\n  pd.retailer ? '🏪 ' + pd.retailer : '',\n  pd.price ? '💰 ' + pd.price : '',\n  pd.rating ? '⭐ Store: ' + pd.rating + (pd.review_count ? ' · ' + pd.review_count + ' reviews' : '') : '',\n  ...(pd.features || []).slice(0, 3).map((f) => '• ' + f),\n  '',\n].filter(Boolean) : [];\n\nconst tg = [\n  '📊 Customer Review Report',\n  '',\n  '🛍 ' + (p.product_name || 'Topic'),\n  p.brand ? '🏷 ' + p.brand : '',\n  fromImage && !pd.name ? '📷 Product identified from your photo' : '',\n  '',\n  ...detailTg,\n  '─── Reviews & Opinions ───',\n  '📈 Sentiment: ' + (a.overall_sentiment || 'unknown') + ' (' + (a.sentiment_score ?? '?') + '/100)',\n  '⭐ Est. rating: ' + (a.estimated_rating ?? 'N/A') + '/5',\n  '',\n  '📝 ' + (a.summary || '').slice(0, 500),\n  '',\n  '👍 Praise:',\n  ...((a.top_praise || []).slice(0, 3).map((x) => '• ' + x)),\n  '',\n  '👎 Complaints:',\n  ...((a.top_complaints || []).slice(0, 3).map((x) => '• ' + x)),\n  ...(a.top_complaints && a.top_complaints.length ? [] : ['• None widely reported']),\n  '',\n  '💡 ' + (a.buyer_recommendation || '').slice(0, 300),\n].filter(Boolean).join('\\n');\n\nreturn [{\n  json: {\n    ...item,\n    report: {\n      markdown: reportMarkdown,\n      generated_at: new Date().toISOString(),\n    },\n    telegram_text: tg.slice(0, 4000),\n  },\n}];"
+      }
+    },
+    {
+      "id": "c3000000-0019-4000-8000-000000000019",
+      "name": "Notify Telegram?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1380,
+        200
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.notify_telegram }}",
+              "value2": true
+            }
+          ],
+          "string": [
+            {
+              "value1": "={{ ($json.telegram_bot_token || $env.TELEGRAM_BOT_TOKEN || \"\").trim() }}",
+              "operation": "notEmpty"
+            },
+            {
+              "value1": "={{ ($json.telegram_chat_id || $env.TELEGRAM_CHAT_ID || \"\").trim() }}",
+              "operation": "notEmpty"
+            }
+          ]
+        },
+        "combineOperation": "all"
+      }
+    },
+    {
+      "id": "c3000000-0020-4000-8000-000000000020",
+      "name": "Send Telegram",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1620,
+        120
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst token = String(item.telegram_bot_token || $env.TELEGRAM_BOT_TOKEN || '').trim();\nconst chatId = String(item.telegram_chat_id || $env.TELEGRAM_CHAT_ID || '').trim();\nconst text = String(item.telegram_text || '').trim();\n\nif (!token || !chatId) {\n  return [{ json: { ...item, telegram_sent: false, telegram_error: 'Missing telegram_bot_token or telegram_chat_id' } }];\n}\nif (!text) {\n  return [{ json: { ...item, telegram_sent: false, telegram_error: 'Empty telegram message' } }];\n}\n\ntry {\n  await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://api.telegram.org/bot' + token + '/sendMessage',\n    body: { chat_id: chatId, text: text.slice(0, 4000) },\n    json: true,\n    timeout: 30000,\n  });\n  return [{ json: { ...item, telegram_sent: true, telegram_error: null } }];\n} catch (err) {\n  return [{ json: { ...item, telegram_sent: false, telegram_error: String(err.message || err).slice(0, 300) } }];\n}"
+      }
+    },
+    {
+      "id": "c3000000-0021-4000-8000-000000000021",
+      "name": "Return Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1620,
+        280
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nreturn [{\n  json: {\n    success: true,\n    run_id: item.run_id,\n    identification_source: item.identification_source || null,\n    product: item.product,\n    product_details: item.product_details || null,\n    product_url: item.product_url || null,\n    analysis: {\n      overall_sentiment: item.analysis?.overall_sentiment,\n      sentiment_score: item.analysis?.sentiment_score,\n      estimated_rating: item.analysis?.estimated_rating,\n      summary: item.analysis?.summary,\n      top_praise: item.analysis?.top_praise,\n      top_complaints: item.analysis?.top_complaints,\n      buyer_recommendation: item.analysis?.buyer_recommendation,\n      suggested_responses: item.analysis?.suggested_responses,\n    },\n    search: {\n      total_results: item.search?.total_results,\n      source_counts: item.collected?.source_counts,\n    },\n    report_markdown: item.report?.markdown,\n    telegram_text: item.telegram_text || null,\n    report_saved: false,\n    notifications: {\n      telegram: Boolean(item.notify_telegram),\n      telegram_sent: item.telegram_sent === true,\n      telegram_error: item.telegram_error || null,\n    },\n    completed_at: new Date().toISOString(),\n  },\n}];"
+      }
+    },
+    {
+      "id": "c3000000-0022-4000-8000-000000000022",
+      "name": "Return Telegram Skip",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        420
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nlet sent = false;\nconst text = String(item.telegram_text || '').trim();\nif (item.action === 'telegram_reply' && text) {\n  const token = String(item.telegram_bot_token || $env.TELEGRAM_BOT_TOKEN || '').trim();\n  const chatId = String(item.telegram_chat_id || $env.TELEGRAM_CHAT_ID || '').trim();\n  if (token && chatId) {\n    try {\n      await this.helpers.httpRequest({\n        method: 'POST',\n        url: 'https://api.telegram.org/bot' + token + '/sendMessage',\n        body: { chat_id: chatId, text: text.slice(0, 4000) },\n        json: true,\n        timeout: 30000,\n      });\n      sent = true;\n    } catch (e) {}\n  }\n}\nreturn [{ json: {\n  success: true,\n  skipped: true,\n  reason: item.skip_reason || item.action || 'telegram_skip',\n  telegram_reply: item.action === 'telegram_reply',\n  telegram_text: text || null,\n  telegram_sent: sent,\n  notifications: { telegram_sent: sent },\n} }];"
+      }
+    },
+    {
+      "id": "c3000000-0023-4000-8000-000000000023",
+      "name": "Note: Workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1500,
+        -220
+      ],
+      "parameters": {
+        "width": 480,
+        "height": 240,
+        "content": "## Customer Review Responder\\n\\n**Input:** product **photo**, product **link**, product name, or topic\\n\\n**Flow:** Photo/URL/Text → Identify → Search reviews → Analyze → Report → Telegram\\n\\n**Photo:** send any product image — Vision AI identifies it, then researches customer reviews.\\n\\n**Link:** paste any product URL — fetches details, then reviews.\\n\\nDeploy: `./scripts/deploy-customer-review-responder.sh`"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram Webhook": {
+      "main": [
+        [
+          {
+            "node": "Adapt Telegram Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Adapt Telegram Payload": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set: Sample Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Sample Input": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "IF Telegram Skip?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Telegram Skip?": {
+      "main": [
+        [
+          {
+            "node": "Return Telegram Skip",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "IF Has Image?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Has Image?": {
+      "main": [
+        [
+          {
+            "node": "Vision AI",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF Has URL?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Has URL?": {
+      "main": [
+        [
+          {
+            "node": "Fetch Product URL",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Identify Product (Text)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Vision AI": {
+      "main": [
+        [
+          {
+            "node": "IF Vision Reply?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Vision Reply?": {
+      "main": [
+        [
+          {
+            "node": "Return Telegram Skip",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Search Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Product URL": {
+      "main": [
+        [
+          {
+            "node": "Search Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identify Product (Text)": {
+      "main": [
+        [
+          {
+            "node": "Search Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Agent": {
+      "main": [
+        [
+          {
+            "node": "Collect Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Data": {
+      "main": [
+        [
+          {
+            "node": "AI Analyzer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Analyzer": {
+      "main": [
+        [
+          {
+            "node": "Generate Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Report": {
+      "main": [
+        [
+          {
+            "node": "Notify Telegram?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Telegram?": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram": {
+      "main": [
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "reviews"
+    },
+    {
+      "name": "openrouter"
+    },
+    {
+      "name": "telegram"
+    },
+    {
+      "name": "search"
+    }
+  ]
+}

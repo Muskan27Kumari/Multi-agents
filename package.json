@@ -1,0 +1,21 @@
+{
+  "name": "n8n-flow",
+  "version": "1.0.0",
+  "private": true,
+  "description": "n8n AI workflows — RAG, Telegram bots, Google Drive Q&A",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "start": "node scripts/run.js up",
+    "stop": "node scripts/run.js down",
+    "status": "node scripts/run.js status",
+    "setup:bots": "node scripts/run.js setup:bots",
+    "deploy:rag": "node scripts/run.js deploy:rag",
+    "deploy:review": "node scripts/run.js deploy:review",
+    "deploy:booking": "node scripts/run.js deploy:booking",
+    "deploy:aux": "node scripts/run.js deploy:aux",
+    "deploy:all": "node scripts/run.js deploy:all",
+    "help": "node scripts/run.js help"
+  }
+}

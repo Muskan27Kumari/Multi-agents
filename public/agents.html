@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Agents — VGI Agent Universe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css" />
+  <style>
+    .page-head {
+      padding: 80px 0 32px;
+    }
+    @media (min-width: 768px) { .page-head { padding: 120px 0 40px; } }
+    .page-head h1 {
+      font-size: clamp(40px, 6vw, 76px);
+      max-width: 900px;
+      letter-spacing: -0.03em;
+    }
+    .page-head h1 em {
+      font-style: normal;
+      background: var(--grad);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .page-head p {
+      color: var(--text-muted);
+      font-size: 17px;
+      max-width: 620px;
+      margin-top: 22px;
+      line-height: 1.55;
+    }
+    .summary-pills {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      margin-top: 28px;
+    }
+
+    /* Filter strip */
+    .filters {
+      position: sticky;
+      top: 68px;
+      z-index: 20;
+      background: rgba(3, 2, 19, 0.85);
+      backdrop-filter: blur(14px) saturate(160%);
+      -webkit-backdrop-filter: blur(14px) saturate(160%);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 0;
+      margin-bottom: 36px;
+    }
+    .filter-row {
+      display: flex; align-items: center; gap: 12px;
+    }
+    .filter-tabs {
+      display: flex; gap: 8px; overflow-x: auto;
+      flex: 1;
+      scrollbar-width: none;
+      padding: 4px 0;
+    }
+    .filter-tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      padding: 9px 16px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.02);
+      color: var(--text-muted);
+      font-size: 13.5px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 180ms ease;
+      font-family: inherit;
+    }
+    .tab:hover {
+      color: var(--text);
+      border-color: var(--border-strong);
+    }
+    .tab.active {
+      color: white;
+      background: var(--grad);
+      border-color: transparent;
+      box-shadow: 0 4px 20px -6px rgba(139, 92, 246, 0.6);
+    }
+    .tab .count {
+      display: inline-block;
+      margin-left: 6px;
+      padding: 1px 7px;
+      background: rgba(0,0,0,0.25);
+      border-radius: 999px;
+      font-size: 11px;
+      opacity: 0.8;
+    }
+    .tab:not(.active) .count {
+      background: rgba(255,255,255,0.06);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr));
+      gap: 20px;
+      padding-bottom: 100px;
+    }
+
+    .empty {
+      grid-column: 1 / -1;
+      padding: 80px 24px;
+      text-align: center;
+      color: var(--text-dim);
+      border: 1px dashed var(--border);
+      border-radius: 24px;
+    }
+
+    .results-meta {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 20px;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    .results-meta .live {
+      display: inline-flex; align-items: center; gap: 8px;
+    }
+  </style>
+</head>
+<body data-screen-label="Agents page">
+  <div data-shell="nav"></div>
+
+  <main>
+    <header class="page-head">
+      <div class="container">
+        <div class="reveal">
+          <div class="eyebrow">The catalogue</div>
+          <h1>Ten agents, <em>one universe</em>.</h1>
+          <p>Every agent below is real, deployable code we maintain. Pick the one closest to your problem — or request a custom build if you don't see your shape.</p>
+          <div class="summary-pills">
+            <span class="badge badge-grad" id="pill-total"></span>
+            <span class="badge status-available"><span class="badge-dot"></span><span id="pill-avail"></span></span>
+            <span class="badge status-soon"><span class="badge-dot"></span><span id="pill-soon"></span></span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div class="filters">
+      <div class="container filter-row">
+        <div class="filter-tabs" id="filter-tabs"></div>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="results-meta">
+        <span id="results-count"></span>
+        <span class="live"><span class="badge-dot" style="background: var(--mint); box-shadow: 0 0 0 3px rgba(52,211,153,0.18);"></span>Live catalogue</span>
+      </div>
+      <div id="grid" class="grid"></div>
+    </div>
+  </main>
+
+  <div data-shell="footer"></div>
+
+  <!-- JavaScript files reorganized into Constants, Utilities, and Components modules -->
+  <script src="js/constants/agents.js"></script>
+  <script src="js/utils/icons.js"></script>
+  <script src="js/utils/reveal.js"></script>
+  <script src="js/utils/spotlight.js"></script>
+  <script src="js/components/navigation.js"></script>
+  <script src="js/components/footer.js"></script>
+  <script src="js/components/agent-card.js"></script>
+  <script src="js/components/request-modal.js"></script>
+  <script src="js/main.js"></script>
+
+  <script>
+    mountShell('agents');
+
+    // Counts
+    const total = AGENTS.length;
+    const avail = AGENTS.filter(a => a.status === 'Available').length;
+    const soon  = total - avail;
+    document.getElementById('pill-total').textContent = `${total} agents`;
+    document.getElementById('pill-avail').textContent = `${avail} available`;
+    document.getElementById('pill-soon').textContent  = `${soon} coming soon`;
+
+    // Build filter tabs
+    const tabs = document.getElementById('filter-tabs');
+    const counts = { All: total };
+    AGENTS.forEach(a => counts[a.category] = (counts[a.category] || 0) + 1);
+    const tabHtml = CATEGORIES.map((cat, i) => `
+      <button class="tab ${i === 0 ? 'active' : ''}" data-cat="${cat}">
+        ${cat}<span class="count">${counts[cat]}</span>
+      </button>
+    `).join('');
+    tabs.innerHTML = tabHtml;
+
+    // Render grid
+    const grid = document.getElementById('grid');
+    const meta = document.getElementById('results-count');
+    function render(filter = 'All') {
+      const list = filter === 'All' ? AGENTS : AGENTS.filter(a => a.category === filter);
+      meta.textContent = `Showing ${list.length} of ${total} agents`;
+      grid.innerHTML = list.length
+        ? list.map(renderAgentCard).join('')
+        : `<div class="empty">No agents in this category yet — check back soon.</div>`;
+      initReveal();
+      initCardSpotlight();
+      // Reveal immediately for in-viewport items
+      requestAnimationFrame(() => {
+        document.querySelectorAll('.agent-card').forEach((el, i) => {
+          setTimeout(() => el.classList.add('in'), Math.min(i, 8) * 35);
+        });
+      });
+    }
+
+    // Tab click
+    tabs.addEventListener('click', (e) => {
+      const t = e.target.closest('.tab');
+      if (!t) return;
+      tabs.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      render(t.dataset.cat);
+    });
+
+    // Read ?category= from url
+    const urlCat = new URLSearchParams(location.search).get('category');
+    if (urlCat && CATEGORIES.includes(urlCat)) {
+      tabs.querySelectorAll('.tab').forEach(x => x.classList.toggle('active', x.dataset.cat === urlCat));
+      render(urlCat);
+    } else {
+      render();
+    }
+
+    initReveal();
+  </script>
+</body>
+</html>

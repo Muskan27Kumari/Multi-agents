@@ -1,0 +1,1104 @@
+{
+  "name": "HR Recruitment Agent",
+  "nodes": [
+    {
+      "id": "h3000000-0001-4000-8000-000000000001",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1200,
+        400
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "hr-recruitment",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "webhookId": "hr-recruitment-webhook"
+    },
+    {
+      "id": "h3000000-0002-4000-8000-000000000002",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        620
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "h3000000-0003-4000-8000-000000000003",
+      "name": "Set: Sample Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -960,
+        620
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"openrouter_api_key\": \"PASTE_YOUR_OPENROUTER_KEY_HERE\",\n  \"openrouter_model\": \"openai/gpt-4o-mini\",\n  \"sender_email\": \"information@variphi.com\",\n  \"hr_email\": \"information@variphi.com\",\n  \"dry_run\": true,\n  \"stage\": \"create_job\",\n  \"job_title\": \"Senior Software Engineer\",\n  \"department\": \"Engineering\",\n  \"location\": \"Remote\",\n  \"employment_type\": \"full_time\",\n  \"required_skills\": [\n    \"Python\",\n    \"PostgreSQL\",\n    \"n8n\"\n  ],\n  \"nice_to_have_skills\": [\n    \"Kubernetes\"\n  ],\n  \"min_experience_years\": 5,\n  \"salary_range\": \"120000-160000 USD\",\n  \"hiring_manager\": \"Jane Smith\",\n  \"headcount\": 1,\n  \"publish_webhooks\": {}\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "h3000000-0004-4000-8000-000000000004",
+      "name": "Merge Triggers",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -720,
+        500
+      ],
+      "parameters": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "h3000000-0005-4000-8000-000000000005",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -480,
+        500
+      ],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "stage",
+              "name": "stage",
+              "value": "={{ ($json.body?.stage || $json.stage || 'process_application').toString().trim().toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "job_id",
+              "name": "job_id",
+              "value": "={{ ($json.body?.job_id || $json.job_id || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "job_title",
+              "name": "job_title",
+              "value": "={{ ($json.body?.job_title || $json.job_title || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "department",
+              "name": "department",
+              "value": "={{ ($json.body?.department || $json.department || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "location",
+              "name": "location",
+              "value": "={{ ($json.body?.location || $json.location || 'Remote').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "employment_type",
+              "name": "employment_type",
+              "value": "={{ ($json.body?.employment_type || $json.employment_type || 'full_time').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "required_skills",
+              "name": "required_skills",
+              "value": "={{ $json.body?.required_skills || $json.required_skills || [] }}",
+              "type": "array"
+            },
+            {
+              "id": "nice_to_have_skills",
+              "name": "nice_to_have_skills",
+              "value": "={{ $json.body?.nice_to_have_skills || $json.nice_to_have_skills || [] }}",
+              "type": "array"
+            },
+            {
+              "id": "min_experience_years",
+              "name": "min_experience_years",
+              "value": "={{ Number($json.body?.min_experience_years || $json.min_experience_years || 0) }}",
+              "type": "number"
+            },
+            {
+              "id": "salary_range",
+              "name": "salary_range",
+              "value": "={{ ($json.body?.salary_range || $json.salary_range || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "job_description",
+              "name": "job_description",
+              "value": "={{ ($json.body?.job_description || $json.job_description || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "hiring_manager",
+              "name": "hiring_manager",
+              "value": "={{ ($json.body?.hiring_manager || $json.hiring_manager || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "headcount",
+              "name": "headcount",
+              "value": "={{ Number($json.body?.headcount || $json.headcount || 1) }}",
+              "type": "number"
+            },
+            {
+              "id": "candidate_name",
+              "name": "candidate_name",
+              "value": "={{ ($json.body?.candidate_name || $json.candidate_name || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "candidate_email",
+              "name": "candidate_email",
+              "value": "={{ ($json.body?.candidate_email || $json.candidate_email || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "candidate_phone",
+              "name": "candidate_phone",
+              "value": "={{ ($json.body?.candidate_phone || $json.candidate_phone || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "resume_text",
+              "name": "resume_text",
+              "value": "={{ ($json.body?.resume_text || $json.resume_text || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "source",
+              "name": "source",
+              "value": "={{ ($json.body?.source || $json.source || 'direct').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "shortlist_threshold",
+              "name": "shortlist_threshold",
+              "value": "={{ Number($json.body?.shortlist_threshold || $json.shortlist_threshold || 70) }}",
+              "type": "number"
+            },
+            {
+              "id": "openrouter_api_key",
+              "name": "openrouter_api_key",
+              "value": "={{ ($json.body?.openrouter_api_key || $json.openrouter_api_key || 'PASTE_YOUR_OPENROUTER_KEY_HERE').toString().trim().replace(/^Bearer\\s+/i, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "openrouter_model",
+              "name": "openrouter_model",
+              "value": "={{ $json.body?.openrouter_model || $json.openrouter_model || 'openai/gpt-4o-mini' }}",
+              "type": "string"
+            },
+            {
+              "id": "hr_email",
+              "name": "hr_email",
+              "value": "={{ ($json.body?.hr_email || $json.hr_email || 'information@variphi.com').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "sender_email",
+              "name": "sender_email",
+              "value": "={{ ($json.body?.sender_email || $json.sender_email || 'information@variphi.com').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "assessment_url",
+              "name": "assessment_url",
+              "value": "={{ ($json.body?.assessment_url || $json.assessment_url || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "publish_webhooks",
+              "name": "publish_webhooks",
+              "value": "={{ $json.body?.publish_webhooks || $json.publish_webhooks || {} }}",
+              "type": "object"
+            },
+            {
+              "id": "database_webhook_url",
+              "name": "database_webhook_url",
+              "value": "={{ ($json.body?.database_webhook_url || $json.database_webhook_url || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "calendar_webhook_url",
+              "name": "calendar_webhook_url",
+              "value": "={{ ($json.body?.calendar_webhook_url || $json.calendar_webhook_url || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "dry_run",
+              "name": "dry_run",
+              "value": "={{ Boolean($json.body?.dry_run ?? $json.dry_run ?? true) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "assessment_answers",
+              "name": "assessment_answers",
+              "value": "={{ $json.body?.assessment_answers || $json.assessment_answers || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "interview_feedback",
+              "name": "interview_feedback",
+              "value": "={{ $json.body?.interview_feedback || $json.interview_feedback || {} }}",
+              "type": "object"
+            },
+            {
+              "id": "offer_details",
+              "name": "offer_details",
+              "value": "={{ $json.body?.offer_details || $json.offer_details || {} }}",
+              "type": "object"
+            },
+            {
+              "id": "candidate_id",
+              "name": "candidate_id",
+              "value": "={{ ($json.body?.candidate_id || $json.candidate_id || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "interview_slot",
+              "name": "interview_slot",
+              "value": "={{ ($json.body?.interview_slot || $json.interview_slot || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "notify_telegram",
+              "name": "notify_telegram",
+              "value": "={{ Boolean($json.body?.notify_telegram ?? $json.notify_telegram ?? true) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "telegram_bot_token",
+              "name": "telegram_bot_token",
+              "value": "={{ ($json.body?.telegram_bot_token || $json.telegram_bot_token || $env.TELEGRAM_BOT_TOKEN_HR || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "telegram_chat_id",
+              "name": "telegram_chat_id",
+              "value": "={{ ($json.body?.telegram_chat_id || $json.telegram_chat_id || $env.TELEGRAM_CHAT_ID_HR || '').toString().trim() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "h3000000-0006-4000-8000-000000000006",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -240,
+        500
+      ],
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nconst stage = String(input.stage || '').trim().toLowerCase();\n\nconst validStages = [\n  'create_job', 'process_application', 'evaluate_assessment',\n  'schedule_interview', 'interview_feedback', 'final_selection', 'onboarding'\n];\n\nif (!validStages.includes(stage)) {\n  throw new Error(`Invalid stage: ${stage}. Use one of: ${validStages.join(', ')}`);\n}\n\nconst out = { ...input, stage };\n\nif (stage === 'create_job') {\n  if (!String(out.job_title || '').trim()) throw new Error('create_job requires job_title');\n}\n\nif (stage === 'process_application') {\n  if (!String(out.candidate_name || '').trim()) throw new Error('process_application requires candidate_name');\n  if (!String(out.candidate_email || '').trim()) throw new Error('process_application requires candidate_email');\n  if (!String(out.resume_text || '').trim()) throw new Error('process_application requires resume_text');\n  if (!String(out.job_title || '').trim() && !String(out.job_id || '').trim()) {\n    throw new Error('process_application requires job_title or job_id');\n  }\n}\n\nif (stage === 'evaluate_assessment') {\n  if (!String(out.candidate_id || '').trim()) out.candidate_id = `cand_${Date.now()}`;\n  if (!String(out.assessment_answers || '').trim()) {\n    out.assessment_answers = 'Sample answers: Q1) Used PostgreSQL indexing. Q2) Built n8n automations.';\n  }\n  if (!String(out.job_title || '').trim()) out.job_title = 'Open Role';\n}\n\nif (stage === 'schedule_interview') {\n  if (!String(out.candidate_email || '').trim()) throw new Error('schedule_interview requires candidate_email');\n  if (!String(out.candidate_name || '').trim()) out.candidate_name = 'Candidate';\n  if (!String(out.job_title || '').trim()) out.job_title = 'Open Role';\n}\n\nif (stage === 'interview_feedback') {\n  if (!String(out.candidate_id || '').trim()) out.candidate_id = `cand_${Date.now()}`;\n  if (!out.interview_feedback || typeof out.interview_feedback !== 'object' || !Object.keys(out.interview_feedback).length) {\n    out.interview_feedback = { technical: 4, communication: 5, culture: 4 };\n  }\n  if (!String(out.candidate_name || '').trim()) out.candidate_name = 'Candidate';\n}\n\nif (stage === 'final_selection') {\n  if (!String(out.candidate_id || '').trim()) out.candidate_id = `cand_${Date.now()}`;\n  if (!String(out.candidate_name || '').trim()) out.candidate_name = 'Candidate';\n  if (!String(out.candidate_email || '').trim()) out.candidate_email = 'candidate@example.com';\n  if (!String(out.job_title || '').trim()) out.job_title = 'Open Role';\n  if (!out.offer_details || typeof out.offer_details !== 'object') {\n    out.offer_details = { salary: out.salary_range || 'TBD', start_date: '2026-06-01' };\n  }\n}\n\nif (stage === 'onboarding') {\n  if (!String(out.candidate_email || '').trim()) throw new Error('onboarding requires candidate_email');\n  if (!String(out.candidate_name || '').trim()) out.candidate_name = 'New Hire';\n  if (!String(out.job_title || '').trim()) out.job_title = 'Open Role';\n  if (!String(out.department || '').trim()) out.department = 'General';\n}\n\nreturn [{\n  json: {\n    ...out,\n    run_id: `hr_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,\n    processed_at: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "h3000000-0007-4000-8000-000000000007",
+      "name": "Route by Stage",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        -20,
+        500
+      ],
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.stage }}",
+        "rules": {
+          "rules": [
+            {
+              "operation": "equal",
+              "value2": "create_job"
+            },
+            {
+              "operation": "equal",
+              "value2": "process_application"
+            },
+            {
+              "operation": "equal",
+              "value2": "evaluate_assessment"
+            },
+            {
+              "operation": "equal",
+              "value2": "schedule_interview"
+            },
+            {
+              "operation": "equal",
+              "value2": "interview_feedback"
+            },
+            {
+              "operation": "equal",
+              "value2": "final_selection"
+            },
+            {
+              "operation": "equal",
+              "value2": "onboarding"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "h3000000-0008-4000-8000-000000000008",
+      "name": "Create Job Opening",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        80
+      ],
+      "parameters": {
+        "jsCode": "const cleanKey = (key) => String(key || '').trim().replace(/^Bearer\\s+/i, '');\nasync function getOpenRouterKey(payload) {\n  let apiKey = cleanKey(payload.openrouter_api_key);\n  if (!apiKey) {\n    try {\n      const cred = await this.getCredentials('httpHeaderAuth');\n      apiKey = cleanKey(cred.value || cred.headerValue);\n    } catch (e) {}\n  }\n  if (!apiKey) throw new Error('Missing openrouter_api_key in payload or HTTP Header Auth credential.');\n  return apiKey;\n}\n\nconst payload = $input.first().json;\nconst apiKey = await getOpenRouterKey.call(this, payload);\nconst model = payload.openrouter_model || 'openai/gpt-4o-mini';\nconst jobId = payload.job_id || `job_${Date.now()}`;\n\nlet description = String(payload.job_description || '').trim();\nif (!description) {\n  const systemPrompt = 'You are an expert HR copywriter. Return strict JSON with keys: title, summary, responsibilities, requirements, benefits.';\n  const userPrompt = `Create a job posting for: ${payload.job_title}\\nDepartment: ${payload.department}\\nLocation: ${payload.location}\\nType: ${payload.employment_type}\\nRequired skills: ${(payload.required_skills || []).join(', ')}\\nNice to have: ${(payload.nice_to_have_skills || []).join(', ')}\\nMin experience: ${payload.min_experience_years} years\\nSalary: ${payload.salary_range}`;\n  const response = await this.helpers.httpRequest({\n    method: 'POST',\n    url: 'https://openrouter.ai/api/v1/chat/completions',\n    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'X-Title': 'HR Recruitment Agent' },\n    body: { model, temperature: 0.3, response_format: { type: 'json_object' }, messages: [\n      { role: 'system', content: systemPrompt },\n      { role: 'user', content: userPrompt }\n    ]},\n    json: true,\n    timeout: 60000\n  });\n  const raw = response.choices?.[0]?.message?.content;\n  const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;\n  description = JSON.stringify(parsed, null, 2);\n}\n\nreturn [{\n  json: {\n    ...payload,\n    job_id: jobId,\n    job_opening: {\n      job_id: jobId,\n      title: payload.job_title,\n      department: payload.department,\n      location: payload.location,\n      employment_type: payload.employment_type,\n      headcount: payload.headcount,\n      hiring_manager: payload.hiring_manager,\n      description,\n      status: 'open',\n      created_at: new Date().toISOString()\n    }\n  }\n}];\n"
+      }
+    },
+    {
+      "id": "h3000000-0009-4000-8000-000000000009",
+      "name": "Publish Job Platforms",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        80
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst hooks = item.publish_webhooks || {};\nconst platforms = ['linkedin', 'indeed', 'naukri', 'careers_page'];\nconst results = [];\n\nfor (const platform of platforms) {\n  const url = String(hooks[platform] || '').trim();\n  if (!url) {\n    results.push({ platform, status: 'skipped', reason: 'no_webhook_configured' });\n    continue;\n  }\n  if (item.dry_run !== false) {\n    results.push({ platform, status: 'dry_run', url });\n    continue;\n  }\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST', url,\n      body: {\n        job_id: item.job_id,\n        title: item.job_title,\n        location: item.location,\n        description: item.job_opening?.description,\n        published_at: new Date().toISOString()\n      },\n      json: true, timeout: 30000\n    });\n    results.push({ platform, status: 'published' });\n  } catch (err) {\n    results.push({ platform, status: 'failed', error: err?.message || 'request_failed' });\n  }\n}\n\nreturn [{ json: { ...item, publish_results: results } }];"
+      }
+    },
+    {
+      "id": "h3000000-0010-4000-8000-000000000010",
+      "name": "Store Job Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        80
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst filePath = `/files/hr-jobs-${item.job_id}.json`;\nconst payload = {\n  run_id: item.run_id,\n  stage: item.stage,\n  job_opening: item.job_opening,\n  publish_results: item.publish_results,\n  stored_at: new Date().toISOString()\n};\nconst content = JSON.stringify(payload, null, 2);\n\nreturn [{\n  json: {\n    ...item,\n    storage: { type: 'file', path: filePath },\n    job_file_path: filePath\n  },\n  binary: {\n    data: {\n      data: Buffer.from(content, 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: `hr-jobs-${item.job_id}.json`\n    }\n  }\n}];"
+      }
+    },
+    {
+      "id": "h3000000-0011-4000-8000-000000000011",
+      "name": "Resume Parsing",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        280
+      ],
+      "parameters": {
+        "jsCode": "\nconst item = $input.first().json;\nconst text = String(item.resume_text || '');\nconst emailMatch = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/i);\nconst phoneMatch = text.match(/(\\+?\\d[\\d\\s().-]{7,}\\d)/);\nconst yearsMatch = text.match(/(\\d+)\\+?\\s*years?/i);\n\nconst parsed = {\n  raw_length: text.length,\n  inferred_email: emailMatch ? emailMatch[0] : item.candidate_email,\n  inferred_phone: phoneMatch ? phoneMatch[0] : item.candidate_phone,\n  inferred_experience_years: yearsMatch ? Number(yearsMatch[1]) : null,\n  skills_mentioned: (item.required_skills || []).filter((s) => text.toLowerCase().includes(String(s).toLowerCase())),\n  parsed_at: new Date().toISOString()\n};\n\nconst candidateId = item.candidate_id || `cand_${Date.now()}_${Math.random().toString(16).slice(2, 6)}`;\n\nreturn [{ json: { ...item, candidate_id: candidateId, resume_parsed: parsed } }];\n"
+      }
+    },
+    {
+      "id": "h3000000-0012-4000-8000-000000000012",
+      "name": "AI Candidate Screening",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        280
+      ],
+      "parameters": {
+        "jsCode": "const cleanKey = (key) => String(key || '').trim().replace(/^Bearer\\s+/i, '');\nasync function getOpenRouterKey(payload) {\n  let apiKey = cleanKey(payload.openrouter_api_key);\n  if (!apiKey) {\n    try {\n      const cred = await this.getCredentials('httpHeaderAuth');\n      apiKey = cleanKey(cred.value || cred.headerValue);\n    } catch (e) {}\n  }\n  if (!apiKey) throw new Error('Missing openrouter_api_key in payload or HTTP Header Auth credential.');\n  return apiKey;\n}\n\nconst item = $input.first().json;\nconst apiKey = await getOpenRouterKey.call(this, item);\nconst model = item.openrouter_model || 'openai/gpt-4o-mini';\nconst rp = item.resume_parsed || {};\n\nconst systemPrompt = 'You are a senior technical recruiter. Return strict JSON with keys: overall_score (0-100), skills_match_score, experience_match_score, culture_fit_score, strengths, gaps, recommendation (shortlist|reject|review), summary, red_flags (array).';\nconst userPrompt = `Job: ${item.job_title}\\nRequired: ${(item.required_skills || []).join(', ')}\\nNice-to-have: ${(item.nice_to_have_skills || []).join(', ')}\\nMin years: ${item.min_experience_years}\\n\\nCandidate: ${item.candidate_name}\\nResume:\\n${item.resume_text}\\n\\nParsed skills found: ${(rp.skills_mentioned || []).join(', ')}`;\n\nconst response = await this.helpers.httpRequest({\n  method: 'POST',\n  url: 'https://openrouter.ai/api/v1/chat/completions',\n  headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'X-Title': 'HR Recruitment Agent' },\n  body: { model, temperature: 0.2, response_format: { type: 'json_object' }, messages: [\n    { role: 'system', content: systemPrompt },\n    { role: 'user', content: userPrompt }\n  ]},\n  json: true,\n  timeout: 60000\n});\n\nconst raw = response.choices?.[0]?.message?.content;\nconst screening = typeof raw === 'string' ? JSON.parse(raw) : raw;\nconst score = Number(screening.overall_score || 0);\nconst threshold = Number(item.shortlist_threshold || 70);\nconst decision = score >= threshold && String(screening.recommendation || '').toLowerCase() !== 'reject'\n  ? 'shortlist'\n  : 'reject';\n\nreturn [{\n  json: {\n    ...item,\n    ai_screening: { ...screening, model: response.model || model, screened_at: new Date().toISOString() },\n    candidate_score: score,\n    pipeline_decision: decision\n  }\n}];\n"
+      }
+    },
+    {
+      "id": "h3000000-0013-4000-8000-000000000013",
+      "name": "Candidate Score Generation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        760,
+        280
+      ],
+      "parameters": {
+        "jsCode": "\nconst item = $input.first().json;\nconst s = item.ai_screening || {};\nreturn [{\n  json: {\n    ...item,\n    candidate_record: {\n      candidate_id: item.candidate_id,\n      job_id: item.job_id || null,\n      job_title: item.job_title,\n      name: item.candidate_name,\n      email: item.candidate_email,\n      phone: item.candidate_phone,\n      source: item.source,\n      score: item.candidate_score,\n      decision: item.pipeline_decision,\n      screening: s,\n      resume_parsed: item.resume_parsed,\n      status: item.pipeline_decision === 'shortlist' ? 'shortlisted' : 'rejected',\n      updated_at: new Date().toISOString()\n    }\n  }\n}];\n"
+      }
+    },
+    {
+      "id": "h3000000-0014-4000-8000-000000000014",
+      "name": "Shortlisted?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1360,
+        280
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "shortlist",
+              "leftValue": "={{ $json.pipeline_decision }}",
+              "rightValue": "shortlist",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "h3000000-0015-4000-8000-000000000015",
+      "name": "Store Candidate Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1000,
+        280
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst filePath = `/files/hr-candidate-${item.candidate_id}.json`;\nconst content = JSON.stringify(item.candidate_record, null, 2);\n\nconst dbUrl = String(item.database_webhook_url || '').trim();\nlet dbResult = { status: 'skipped' };\nif (dbUrl && !item.dry_run) {\n  try {\n    await this.helpers.httpRequest({\n      method: 'POST', url: dbUrl,\n      body: { table: 'candidates', record: item.candidate_record },\n      json: true, timeout: 30000\n    });\n    dbResult = { status: 'stored', target: 'webhook' };\n  } catch (err) {\n    dbResult = { status: 'failed', error: err?.message };\n  }\n} else if (dbUrl && item.dry_run) {\n  dbResult = { status: 'dry_run', target: dbUrl };\n}\n\nreturn [{\n  json: {\n    ...item,\n    storage: { file: filePath, database: dbResult },\n    candidate_file_path: filePath\n  },\n  binary: {\n    data: {\n      data: Buffer.from(content, 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: `hr-candidate-${item.candidate_id}.json`\n    }\n  }\n}];"
+      }
+    },
+    {
+      "id": "h3000000-0016-4000-8000-000000000016",
+      "name": "Prepare Assessment Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        180
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst url = String(item.assessment_url || 'https://variphi.com/assessments').trim();\nconst subject = `Assessment for ${item.job_title} — ${item.candidate_name}`;\nconst html = `<p>Hi ${item.candidate_name},</p><p>Congratulations — you have been shortlisted for <strong>${item.job_title}</strong>.</p><p>Please complete your technical assessment: <a href=\"${url}\">${url}</a></p><p>Score: ${item.candidate_score}/100</p><p>Regards,<br/>HR Team</p>`;\nreturn [{ json: { ...item, email_outbound: { to: item.candidate_email, cc: item.hr_email, subject, html, type: 'assessment_invite' } } }];"
+      }
+    },
+    {
+      "id": "h3000000-0017-4000-8000-000000000017",
+      "name": "Prepare Rejection Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        380
+      ],
+      "parameters": {
+        "jsCode": "\nconst item = $input.first().json;\nconst subject = `Update on your application — ${item.job_title}`;\nconst html = `<p>Hi ${item.candidate_name},</p><p>Thank you for applying for <strong>${item.job_title}</strong>. After review, we will not be moving forward at this time.</p><p>Regards,<br/>HR Team</p>`;\nreturn [{ json: { ...item, email_outbound: { to: item.candidate_email, cc: item.hr_email, subject, html, type: 'rejection' } } }];\n"
+      }
+    },
+    {
+      "id": "h3000000-0018-4000-8000-000000000018",
+      "name": "Evaluate Assessment",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        480
+      ],
+      "parameters": {
+        "jsCode": "const cleanKey = (key) => String(key || '').trim().replace(/^Bearer\\s+/i, '');\nasync function getOpenRouterKey(payload) {\n  let apiKey = cleanKey(payload.openrouter_api_key);\n  if (!apiKey) {\n    try {\n      const cred = await this.getCredentials('httpHeaderAuth');\n      apiKey = cleanKey(cred.value || cred.headerValue);\n    } catch (e) {}\n  }\n  if (!apiKey) throw new Error('Missing openrouter_api_key in payload or HTTP Header Auth credential.');\n  return apiKey;\n}\n\nconst item = $input.first().json;\nconst apiKey = await getOpenRouterKey.call(this, item);\nconst model = item.openrouter_model || 'openai/gpt-4o-mini';\nconst systemPrompt = 'You are an assessment evaluator. Return strict JSON: score (0-100), passed (boolean), strengths, weaknesses, recommendation (proceed_interview|reject|review), feedback_summary.';\nconst userPrompt = `Job: ${item.job_title}\\nCandidate: ${item.candidate_name || item.candidate_id}\\nAnswers:\\n${item.assessment_answers}`;\n\nconst response = await this.helpers.httpRequest({\n  method: 'POST', url: 'https://openrouter.ai/api/v1/chat/completions',\n  headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'X-Title': 'HR Recruitment Agent' },\n  body: { model, temperature: 0.2, response_format: { type: 'json_object' }, messages: [\n    { role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }\n  ]},\n  json: true, timeout: 60000\n});\nconst raw = response.choices?.[0]?.message?.content;\nconst evaluation = typeof raw === 'string' ? JSON.parse(raw) : raw;\nconst passed = Boolean(evaluation.passed);\nconst proceed = String(evaluation.recommendation || '').toLowerCase() === 'proceed_interview' || passed;\nconst subject = proceed\n  ? `Assessment passed — next step for ${item.job_title}`\n  : `Assessment update — ${item.job_title}`;\nconst html = proceed\n  ? `<p>Hi ${item.candidate_name || 'Candidate'},</p><p>Your assessment results are in. Score: ${evaluation.score ?? 'n/a'}/100. We would like to proceed to the interview stage.</p><p>Summary: ${evaluation.feedback_summary || ''}</p>`\n  : `<p>Hi ${item.candidate_name || 'Candidate'},</p><p>Thank you for completing the assessment. We will not be moving forward at this time.</p><p>Summary: ${evaluation.feedback_summary || ''}</p>`;\n\nreturn [{\n  json: {\n    ...item,\n    assessment_evaluation: evaluation,\n    assessment_passed: passed,\n    pipeline_decision: proceed ? 'proceed_interview' : 'reject',\n    email_outbound: item.candidate_email ? { to: item.candidate_email, cc: item.hr_email, subject, html, type: 'assessment_result' } : undefined\n  }\n}];"
+      }
+    },
+    {
+      "id": "h3000000-0019-4000-8000-000000000019",
+      "name": "Schedule Interview",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        640
+      ],
+      "parameters": {
+        "jsCode": "\nconst item = $input.first().json;\nconst slot = item.interview_slot || new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();\nconst calUrl = String(item.calendar_webhook_url || '').trim();\nlet calendar = { status: 'pending', slot };\n\nif (calUrl && !item.dry_run) {\n  try {\n    const res = await this.helpers.httpRequest({\n      method: 'POST', url: calUrl,\n      body: {\n        candidate_name: item.candidate_name,\n        candidate_email: item.candidate_email,\n        job_title: item.job_title,\n        interview_slot: slot,\n        attendees: [item.candidate_email, item.hr_email].filter(Boolean)\n      },\n      json: true, timeout: 30000\n    });\n    calendar = { status: 'scheduled', slot, response: res };\n  } catch (err) {\n    calendar = { status: 'failed', error: err?.message, slot };\n  }\n} else if (calUrl) {\n  calendar = { status: 'dry_run', slot, url: calUrl };\n}\n\nconst notifyHtml = `<p>Interview scheduled for <strong>${item.candidate_name}</strong> — ${item.job_title}</p><p>Slot: ${slot}</p>`;\nreturn [{\n  json: {\n    ...item,\n    interview: calendar,\n    email_outbound: {\n      to: item.candidate_email,\n      cc: item.hr_email,\n      subject: `Interview scheduled — ${item.job_title}`,\n      html: notifyHtml,\n      type: 'interview_scheduled'\n    }\n  }\n}];\n"
+      }
+    },
+    {
+      "id": "h3000000-0020-4000-8000-000000000020",
+      "name": "Interview Feedback Collection",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        800
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst fb = item.interview_feedback || {};\nconst ratings = Object.values(fb).filter((v) => typeof v === 'number');\nconst avg = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;\nconst hireRecommendation = avg !== null && avg >= 4 ? 'hire' : avg !== null && avg >= 3 ? 'maybe' : 'no_hire';\nconst summary = {\n  average_rating: avg,\n  recommendation: hireRecommendation,\n  raw: fb,\n  collected_at: new Date().toISOString()\n};\n\nconst html = `<p>Interview feedback recorded for <strong>${item.candidate_name || item.candidate_id}</strong>.</p><p>Average rating: ${avg ?? 'n/a'}</p><p>Recommendation: ${hireRecommendation}</p>`;\n\nreturn [{\n  json: {\n    ...item,\n    feedback_summary: summary,\n    pipeline_decision: hireRecommendation,\n    email_outbound: item.hr_email ? {\n      to: item.hr_email,\n      cc: item.sender_email || item.hr_email,\n      subject: `Interview feedback — ${item.candidate_name || item.candidate_id}`,\n      html,\n      type: 'interview_feedback_internal'\n    } : undefined\n  }\n}];"
+      }
+    },
+    {
+      "id": "h3000000-0021-4000-8000-000000000021",
+      "name": "Offer Letter Generation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        960
+      ],
+      "parameters": {
+        "jsCode": "const cleanKey = (key) => String(key || '').trim().replace(/^Bearer\\s+/i, '');\nasync function getOpenRouterKey(payload) {\n  let apiKey = cleanKey(payload.openrouter_api_key);\n  if (!apiKey) {\n    try {\n      const cred = await this.getCredentials('httpHeaderAuth');\n      apiKey = cleanKey(cred.value || cred.headerValue);\n    } catch (e) {}\n  }\n  if (!apiKey) throw new Error('Missing openrouter_api_key in payload or HTTP Header Auth credential.');\n  return apiKey;\n}\n\nconst item = $input.first().json;\nconst apiKey = await getOpenRouterKey.call(this, item);\nconst model = item.openrouter_model || 'openai/gpt-4o-mini';\nconst offer = item.offer_details || {};\nconst systemPrompt = 'You are an HR operations specialist. Return strict JSON: offer_letter_markdown, start_date_suggestion, onboarding_checklist (array of strings).';\nconst userPrompt = `Generate offer letter for ${item.candidate_name}, role ${item.job_title}, salary ${offer.salary || item.salary_range}, start ${offer.start_date || 'TBD'}, location ${item.location}.`;\n\nconst response = await this.helpers.httpRequest({\n  method: 'POST', url: 'https://openrouter.ai/api/v1/chat/completions',\n  headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'X-Title': 'HR Recruitment Agent' },\n  body: { model, temperature: 0.3, response_format: { type: 'json_object' }, messages: [\n    { role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }\n  ]},\n  json: true, timeout: 60000\n});\nconst raw = response.choices?.[0]?.message?.content;\nconst offerDoc = typeof raw === 'string' ? JSON.parse(raw) : raw;\nconst html = `<p>Hi ${item.candidate_name},</p><p>We are pleased to extend an offer for <strong>${item.job_title}</strong>.</p><pre>${offerDoc.offer_letter_markdown || ''}</pre>`;\nreturn [{\n  json: {\n    ...item,\n    offer: offerDoc,\n    pipeline_decision: 'hired',\n    email_outbound: {\n      to: item.candidate_email,\n      cc: item.hr_email,\n      subject: `Offer Letter — ${item.job_title}`,\n      html,\n      type: 'offer_letter'\n    }\n  }\n}];\n"
+      }
+    },
+    {
+      "id": "h3000000-0022-4000-8000-000000000022",
+      "name": "Employee Onboarding",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        1120
+      ],
+      "parameters": {
+        "jsCode": "const cleanKey = (key) => String(key || '').trim().replace(/^Bearer\\s+/i, '');\nasync function getOpenRouterKey(payload) {\n  let apiKey = cleanKey(payload.openrouter_api_key);\n  if (!apiKey) {\n    try {\n      const cred = await this.getCredentials('httpHeaderAuth');\n      apiKey = cleanKey(cred.value || cred.headerValue);\n    } catch (e) {}\n  }\n  if (!apiKey) throw new Error('Missing openrouter_api_key in payload or HTTP Header Auth credential.');\n  return apiKey;\n}\n\nconst item = $input.first().json;\nconst apiKey = await getOpenRouterKey.call(this, item);\nconst model = item.openrouter_model || 'openai/gpt-4o-mini';\nconst systemPrompt = 'Return strict JSON: onboarding_tasks (array of {owner, task, due_days}), welcome_email_html.';\nconst userPrompt = `Create onboarding plan for new hire ${item.candidate_name}, role ${item.job_title}, department ${item.department}, start in IT and HR.`;\n\nconst response = await this.helpers.httpRequest({\n  method: 'POST', url: 'https://openrouter.ai/api/v1/chat/completions',\n  headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json', 'X-Title': 'HR Recruitment Agent' },\n  body: { model, temperature: 0.3, response_format: { type: 'json_object' }, messages: [\n    { role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }\n  ]},\n  json: true, timeout: 60000\n});\nconst raw = response.choices?.[0]?.message?.content;\nconst plan = typeof raw === 'string' ? JSON.parse(raw) : raw;\nreturn [{\n  json: {\n    ...item,\n    onboarding_plan: plan,\n    email_outbound: {\n      to: item.candidate_email,\n      cc: item.hr_email,\n      subject: `Welcome aboard — ${item.job_title}`,\n      html: plan.welcome_email_html || `<p>Welcome ${item.candidate_name}!</p>`,\n      type: 'onboarding_welcome'\n    }\n  }\n}];\n"
+      }
+    },
+    {
+      "id": "h3000000-0024-4000-8000-000000000024",
+      "name": "Send HR Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2100,
+        420
+      ],
+      "parameters": {
+        "fromEmail": "={{ $json.sender_email || $json.email_outbound?.from || 'information@variphi.com' }}",
+        "toEmail": "={{ $json.email_outbound?.to || $json.candidate_email }}",
+        "subject": "={{ $json.email_outbound?.subject || 'HR Recruitment Update' }}",
+        "emailFormat": "html",
+        "html": "={{ $json.email_outbound?.html || '<p>Pipeline update</p>' }}",
+        "options": {
+          "ccEmail": "={{ $json.email_outbound?.cc || $json.hr_email || '' }}",
+          "replyTo": "={{ $json.hr_email || $json.sender_email || 'information@variphi.com' }}"
+        }
+      }
+    },
+    {
+      "id": "h3000000-0025-4000-8000-000000000025",
+      "name": "Return Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2540,
+        500
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nreturn [{\n  json: {\n    success: true,\n    run_id: item.run_id,\n    stage: item.stage,\n    job_id: item.job_id || null,\n    candidate_id: item.candidate_id || null,\n    pipeline_decision: item.pipeline_decision || null,\n    candidate_score: item.candidate_score ?? null,\n    publish_results: item.publish_results || null,\n    job_opening: item.job_opening || null,\n    storage: item.storage || null,\n    candidate_record: item.candidate_record || null,\n    assessment_evaluation: item.assessment_evaluation || null,\n    assessment_passed: item.assessment_passed ?? null,\n    interview: item.interview || null,\n    feedback_summary: item.feedback_summary || null,\n    offer: item.offer || null,\n    onboarding_plan: item.onboarding_plan || null,\n    email_sent: Boolean(item.email_sent || item.email_outbound?.to),\n    telegram_sent: Boolean(item.telegram_sent || item.telegram_delivery?.status === 'sent'),\n    completed_at: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "h3000000-0999-4000-8000-000000999",
+      "name": "Note: Pipeline",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        80
+      ],
+      "parameters": {
+        "content": "## HR Recruitment Agent\n\n**One stage runs per execution.** Set `stage` in the webhook body or edit **Set: Sample Payload** for manual tests.\n\n| stage | test file |\n|-------|-----------|\n| create_job | docs/hr-recruitment-samples/create-job.json |\n| process_application | docs/hr-recruitment-agent-sample-request.json |\n| evaluate_assessment | docs/hr-recruitment-samples/evaluate-assessment.json |\n| schedule_interview | docs/hr-recruitment-samples/schedule-interview.json |\n| interview_feedback | docs/hr-recruitment-samples/interview-feedback.json |\n| final_selection | docs/hr-recruitment-samples/final-selection.json |\n| onboarding | docs/hr-recruitment-samples/onboarding.json |\n\n**SMTP From:** information@variphi.com\n**OpenRouter:** openrouter_api_key in body\n\nManual default sample = create_job (tests Create Job Opening chain).",
+        "height": 320,
+        "width": 420
+      }
+    },
+    {
+      "id": "h3000000-0027-4000-8000-000000027",
+      "name": "Has Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1720,
+        500
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "has-email",
+              "leftValue": "={{ ($json.email_outbound?.to || '').toString().trim() }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "h3000000-0028-4000-8000-000000028",
+      "name": "Write Candidate File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        1180,
+        280
+      ],
+      "parameters": {
+        "fileName": "={{ $json.candidate_file_path }}",
+        "options": {},
+        "dataPropertyName": "data"
+      }
+    },
+    {
+      "id": "h3000000-0029-4000-8000-000000029",
+      "name": "Write Job File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        920,
+        80
+      ],
+      "parameters": {
+        "fileName": "={{ $json.job_file_path }}",
+        "options": {},
+        "dataPropertyName": "data"
+      }
+    },
+    {
+      "id": "h3000000-0030-4000-8000-000000030",
+      "name": "Prepare SMTP Envelope",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1900,
+        420
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst SMTP_DOMAIN = 'variphi.com';\nconst DEFAULT_SENDER = 'information@variphi.com';\n\nconst isDomainEmail = (value) => {\n  const email = String(value || '').trim().toLowerCase();\n  if (!email.includes('@')) return false;\n  return email.split('@')[1] === SMTP_DOMAIN;\n};\n\nconst resolveSender = () => {\n  const candidates = [item.sender_email, item.hr_email];\n  for (const value of candidates) {\n    if (isDomainEmail(value)) return String(value).trim();\n  }\n  return DEFAULT_SENDER;\n};\n\nconst sender = resolveSender();\nconst hrCc = isDomainEmail(item.hr_email) ? String(item.hr_email).trim() : sender;\nconst outbound = item.email_outbound || {};\nconst to = String(outbound.to || item.candidate_email || '').trim();\n\nif (!to) {\n  throw new Error('Missing recipient email. Set email_outbound.to or candidate_email.');\n}\n\nreturn [{\n  json: {\n    ...item,\n    sender_email: sender,\n    hr_email: hrCc,\n    email_sent: false,\n    email_outbound: {\n      ...outbound,\n      to,\n      from: sender,\n      cc: outbound.cc || hrCc\n    }\n  }\n}];"
+      }
+    },
+    {
+      "id": "h3000000-0031-4000-8000-000000031",
+      "name": "Build HR Telegram Summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100,
+        500
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst lines = [\n  `✅ HR Recruitment — ${item.stage || 'update'}`,\n  `Run: ${item.run_id || 'n/a'}`,\n];\nif (item.job_id) lines.push(`Job: ${item.job_id}${item.job_title ? ' — ' + item.job_title : ''}`);\nif (item.candidate_id || item.candidate_name) {\n  lines.push(`Candidate: ${item.candidate_name || item.candidate_id}`);\n}\nif (item.candidate_score != null) lines.push(`Score: ${item.candidate_score}/100`);\nif (item.pipeline_decision) lines.push(`Decision: ${item.pipeline_decision}`);\nif (item.assessment_passed != null) lines.push(`Assessment passed: ${item.assessment_passed}`);\nif (item.job_opening?.title) lines.push(`Opening created: ${item.job_opening.title}`);\nif (item.email_sent) lines.push('Email: sent');\nreturn [{ json: { ...item, telegram_text: lines.join('\\n').slice(0, 4000) } }];"
+      }
+    },
+    {
+      "id": "h3000000-0032-4000-8000-000000032",
+      "name": "Send HR Telegram",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2320,
+        500
+      ],
+      "parameters": {
+        "jsCode": "const item = $json;\nconst token = String(item.telegram_bot_token || '').trim();\nconst chatId = String(item.telegram_chat_id || '').trim();\nlet telegram_delivery = { status: 'skipped', reason: 'disabled_or_missing_credentials' };\n\nif (item.notify_telegram && token && chatId) {\n  const text = String(item.telegram_text || '').trim();\n  if (!text) {\n    telegram_delivery = { status: 'skipped', reason: 'empty_message' };\n  } else {\n    try {\n      const resp = await this.helpers.httpRequest({\n        method: 'POST',\n        url: `https://api.telegram.org/bot${token}/sendMessage`,\n        body: { chat_id: chatId, text },\n        json: true,\n        timeout: 30000,\n      });\n      if (!resp?.ok) throw new Error(resp?.description || 'Telegram API returned ok:false');\n      telegram_delivery = {\n        status: 'sent',\n        message_id: resp.result?.message_id || null,\n        chat_id: chatId,\n      };\n    } catch (err) {\n      telegram_delivery = { status: 'failed', error: String(err?.message || err).slice(0, 500) };\n    }\n  }\n}\n\nreturn [{ json: { ...item, telegram_delivery, telegram_sent: telegram_delivery.status === 'sent' } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set: Sample Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Sample Payload": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Triggers": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Route by Stage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Stage": {
+      "main": [
+        [
+          {
+            "node": "Create Job Opening",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Resume Parsing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Evaluate Assessment",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Schedule Interview",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Interview Feedback Collection",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Offer Letter Generation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Employee Onboarding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Job Opening": {
+      "main": [
+        [
+          {
+            "node": "Publish Job Platforms",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Publish Job Platforms": {
+      "main": [
+        [
+          {
+            "node": "Store Job Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Job Record": {
+      "main": [
+        [
+          {
+            "node": "Write Job File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Resume Parsing": {
+      "main": [
+        [
+          {
+            "node": "AI Candidate Screening",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Candidate Screening": {
+      "main": [
+        [
+          {
+            "node": "Candidate Score Generation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Candidate Score Generation": {
+      "main": [
+        [
+          {
+            "node": "Store Candidate Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Shortlisted?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Assessment Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Rejection Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Candidate Data": {
+      "main": [
+        [
+          {
+            "node": "Write Candidate File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Assessment Email": {
+      "main": [
+        [
+          {
+            "node": "Has Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Rejection Email": {
+      "main": [
+        [
+          {
+            "node": "Has Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Assessment": {
+      "main": [
+        [
+          {
+            "node": "Has Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Interview": {
+      "main": [
+        [
+          {
+            "node": "Has Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Interview Feedback Collection": {
+      "main": [
+        [
+          {
+            "node": "Has Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Offer Letter Generation": {
+      "main": [
+        [
+          {
+            "node": "Has Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Employee Onboarding": {
+      "main": [
+        [
+          {
+            "node": "Has Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send HR Email": {
+      "main": [
+        [
+          {
+            "node": "Build HR Telegram Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Email?": {
+      "main": [
+        [
+          {
+            "node": "Prepare SMTP Envelope",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build HR Telegram Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Candidate File": {
+      "main": [
+        [
+          {
+            "node": "Shortlisted?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Job File": {
+      "main": [
+        [
+          {
+            "node": "Has Email?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare SMTP Envelope": {
+      "main": [
+        [
+          {
+            "node": "Send HR Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build HR Telegram Summary": {
+      "main": [
+        [
+          {
+            "node": "Send HR Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send HR Telegram": {
+      "main": [
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "HrRecruitmentAgentV1"
+}

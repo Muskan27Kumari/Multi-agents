@@ -1,0 +1,41 @@
+{
+  "7887196330": {
+    "drive_url": "https://drive.google.com/file/d/1s32URZxurxEe-RW1mfmTFFgERBy10HAb/view?usp=sharing",
+    "drive_resource": {
+      "type": "file",
+      "id": "1s32URZxurxEe-RW1mfmTFFgERBy10HAb",
+      "url": "https://drive.google.com/file/d/1s32URZxurxEe-RW1mfmTFFgERBy10HAb/view?usp=sharing"
+    },
+    "ready": true,
+    "syncing": false,
+    "service_account_email": "vgi-skill-universe@variphi-4d952.iam.gserviceaccount.com",
+    "chat_id": "7887196330",
+    "ingested_count": 1,
+    "skipped_count": 0,
+    "failed_count": 0,
+    "total_chunks": 88,
+    "total_files": 1,
+    "last_sync_at": "2026-06-15T19:23:53.992Z",
+    "sync_errors": []
+  },
+  "updated_at": "2026-06-24T04:50:27.582Z",
+  "5296627077": {
+    "drive_url": "https://drive.google.com/file/d/1s32URZxurxEe-RW1mfmTFFgERBy10HAb/view?usp=sharing",
+    "drive_resource": {
+      "type": "file",
+      "id": "1s32URZxurxEe-RW1mfmTFFgERBy10HAb",
+      "url": "https://drive.google.com/file/d/1s32URZxurxEe-RW1mfmTFFgERBy10HAb/view?usp=sharing"
+    },
+    "ready": true,
+    "syncing": false,
+    "service_account_email": "vgi-skill-universe@variphi-4d952.iam.gserviceaccount.com",
+    "chat_id": "5296627077",
+    "ingested_count": 1,
+    "skipped_count": 0,
+    "failed_count": 0,
+    "total_chunks": 88,
+    "total_files": 1,
+    "last_sync_at": "2026-06-24T04:50:27.577Z",
+    "sync_errors": []
+  }
+}

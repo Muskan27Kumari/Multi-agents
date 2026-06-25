@@ -1,0 +1,987 @@
+{
+  "name": "Appointment Booking Agent",
+  "nodes": [
+    {
+      "id": "b2000000-0001-4000-8000-000000000001",
+      "name": "Telegram Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1500,
+        200
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "appointment-booking-agent-telegram",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "webhookId": "appointment-booking-agent-telegram"
+    },
+    {
+      "id": "b2000000-0002-4000-8000-000000000002",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1500,
+        400
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "appointment-booking-agent",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "webhookId": "appointment-booking-agent-webhook"
+    },
+    {
+      "id": "b2000000-0003-4000-8000-000000000003",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1500,
+        600
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "b2000000-0004-4000-8000-000000000004",
+      "name": "Set: Sample Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1260,
+        600
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"action\": \"book\",\n  \"direct_booking\": true,\n  \"customer_name\": \"Jane Doe\",\n  \"customer_email\": \"jane@example.com\",\n  \"customer_phone\": \"+15551234567\",\n  \"service_type\": \"General Consultation\",\n  \"date\": \"2026-06-15\",\n  \"time_slot\": \"10:00\",\n  \"chat_id\": \"api-demo\",\n  \"telegram_chat_id\": \"api-demo\",\n  \"telegram_bot_token\": \"\"\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "b2000000-0005-4000-8000-000000000005",
+      "name": "Merge Triggers",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -1020,
+        400
+      ],
+      "parameters": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "b2000000-0006-4000-8000-000000000006",
+      "name": "Adapt Telegram Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1260,
+        200
+      ],
+      "parameters": {
+        "jsCode": "const raw = $input.first().json;\nconst token = String(\n  raw.telegram_bot_token || raw.body?.telegram_bot_token\n  || $env.TELEGRAM_BOT_TOKEN || ''\n).trim();\nconst allowedChatId = String($env.TELEGRAM_CHAT_ID || '').trim();\n\nfunction skip(reason) {\n  return [{ json: { action: 'skip', channel: 'telegram', skip_reason: reason } }];\n}\n\nfunction reply(text, chatId) {\n  return [{\n    json: {\n      action: 'telegram_reply',\n      channel: 'telegram',\n      telegram_bot_token: token,\n      telegram_chat_id: chatId,\n      telegram_text: text,\n    },\n  }];\n}\n\nlet update = raw;\nif (raw.body && typeof raw.body === 'object' && !Array.isArray(raw.body)) {\n  if (raw.body.update_id != null || raw.body.message) update = raw.body;\n}\nif (typeof raw.body === 'string' && raw.body.trim()) {\n  try {\n    const parsed = JSON.parse(raw.body);\n    if (parsed && (parsed.update_id != null || parsed.message)) update = parsed;\n  } catch (e) {}\n}\n\nconst msg = update.message || update.edited_message || update.channel_post;\nif (!msg) return skip('no_message');\n\nconst chatId = String(msg.chat?.id || '');\nif (allowedChatId && chatId !== allowedChatId) {\n  return reply('This bot is restricted to an authorized chat.', chatId);\n}\n\nconst text = String(msg.text || msg.caption || '').trim();\nconst userName = String(msg.from?.first_name || msg.from?.username || 'Guest').trim();\n\nconst bookingSessions = update.booking_sessions || raw.booking_sessions || raw.body?.booking_sessions || {};\nconst bookingAppointments = update.booking_appointments || raw.booking_appointments || raw.body?.booking_appointments || [];\n\nreturn [{\n  json: {\n    channel: 'telegram',\n    source: 'telegram',\n    telegram_bot_token: token,\n    telegram_chat_id: chatId,\n    telegram_user_name: userName,\n    message_text: text,\n    _sessions: bookingSessions,\n    _bookings: { appointments: Array.isArray(bookingAppointments) ? bookingAppointments : [] },\n    raw_update: update,\n  },\n}];"
+      }
+    },
+    {
+      "id": "b2000000-0007-4000-8000-000000000007",
+      "name": "Normalize Input",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -780,
+        400
+      ],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "channel",
+              "name": "channel",
+              "value": "={{ $json.channel || \"api\" }}",
+              "type": "string"
+            },
+            {
+              "id": "chat_id",
+              "name": "chat_id",
+              "value": "={{ ($json.telegram_chat_id || $json.body?.chat_id || $json.chat_id || \"\").toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "message_text",
+              "name": "message_text",
+              "value": "={{ ($json.message_text || $json.body?.message_text || $json.body?.text || $json.text || \"\").toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "telegram_bot_token",
+              "name": "telegram_bot_token",
+              "value": "={{ ($json.telegram_bot_token || $json.body?.telegram_bot_token || $env.TELEGRAM_BOT_TOKEN || \"\").toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "telegram_chat_id",
+              "name": "telegram_chat_id",
+              "value": "={{ ($json.telegram_chat_id || $json.body?.telegram_chat_id || $json.chat_id || $env.TELEGRAM_CHAT_ID || \"\").toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "telegram_user_name",
+              "name": "telegram_user_name",
+              "value": "={{ ($json.telegram_user_name || $json.body?.customer_name || \"\").toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "action",
+              "name": "action",
+              "value": "={{ ($json.body?.action || $json.action || \"\").toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "direct_booking",
+              "name": "direct_booking",
+              "value": "={{ Boolean($json.body?.direct_booking ?? $json.direct_booking) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "customer_name",
+              "name": "customer_name",
+              "value": "={{ ($json.body?.customer_name || $json.customer_name || \"\").toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "customer_email",
+              "name": "customer_email",
+              "value": "={{ ($json.body?.customer_email || $json.customer_email || \"\").toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "customer_phone",
+              "name": "customer_phone",
+              "value": "={{ ($json.body?.customer_phone || $json.customer_phone || \"\").toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "service_type",
+              "name": "service_type",
+              "value": "={{ ($json.body?.service_type || $json.service_type || \"\").toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "service_id",
+              "name": "service_id",
+              "value": "={{ ($json.body?.service_id || $json.service_id || \"\").toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "date",
+              "name": "date",
+              "value": "={{ ($json.body?.date || $json.date || \"\").toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "time_slot",
+              "name": "time_slot",
+              "value": "={{ ($json.body?.time_slot || $json.time_slot || \"\").toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "_sessions",
+              "name": "_sessions",
+              "value": "={{ $json._sessions || $json.body?.booking_sessions || {} }}",
+              "type": "object"
+            },
+            {
+              "id": "_bookings",
+              "name": "_bookings",
+              "value": "={{ $json._bookings || { appointments: ($json.body?.booking_appointments || []) } }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "b2000000-0008-4000-8000-000000000008",
+      "name": "Process Booking Conversation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -540,
+        400
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst token = String(item.telegram_bot_token || $env.TELEGRAM_BOT_TOKEN || '').trim();\nconst chatId = String(item.telegram_chat_id || item.chat_id || '').trim();\nconst text = String(item.message_text || item.text || '').trim();\nconst userName = String(item.telegram_user_name || item.customer_name || 'Guest').trim();\n\nconst staticData = $getWorkflowStaticData('global');\nconst sessions = { ...(item._sessions || {}) };\nstaticData.sessions = sessions;\nstaticData.bookings = staticData.bookings || { appointments: [] };\nstaticData.calendarEvents = staticData.calendarEvents || { events: [] };\n\nconst SERVICES = [{\"id\":\"1\",\"category\":\"General & Primary Care\",\"name\":\"General Consultation\",\"duration_min\":30,\"requirements\":[\"Government photo ID (Aadhaar, PAN, Passport, or Driving License)\",\"Previous prescriptions and medical reports\",\"List of current medications (with dosage)\",\"Health insurance card (if applicable)\",\"Referral letter from another doctor (if any)\"]},{\"id\":\"2\",\"category\":\"General & Primary Care\",\"name\":\"Follow-up Visit\",\"duration_min\":20,\"requirements\":[\"Government photo ID (Aadhaar, PAN, Passport, or Driving License)\",\"Previous prescriptions and medical reports\",\"List of current medications (with dosage)\",\"Health insurance card (if applicable)\",\"Referral letter from another doctor (if any)\"]},{\"id\":\"3\",\"category\":\"General & Primary Care\",\"name\":\"Annual Physical / Health Checkup\",\"duration_min\":45,\"requirements\":[\"Government photo ID (Aadhaar, PAN, Passport, or Driving License)\",\"Previous prescriptions and medical reports\",\"List of current medications (with dosage)\",\"Health insurance card (if applicable)\",\"Referral letter from another doctor (if any)\"]},{\"id\":\"4\",\"category\":\"General & Primary Care\",\"name\":\"Preventive Care Visit\",\"duration_min\":30,\"requirements\":[\"Government photo ID (Aadhaar, PAN, Passport, or Driving License)\",\"Previous prescriptions and medical reports\",\"List of current medications (with dosage)\",\"Health insurance card (if applicable)\",\"Referral letter from another doctor (if any)\"]},{\"id\":\"5\",\"category\":\"General & Primary Care\",\"name\":\"Second Opinion Consultation\",\"duration_min\":40,\"requirements\":[\"Government photo ID (Aadhaar, PAN, Passport, or Driving License)\",\"Previous prescriptions and medical reports\",\"List of current medications (with dosage)\",\"Health insurance card (if applicable)\",\"Referral letter from another doctor (if any)\"]},{\"id\":\"6\",\"category\":\"General & Primary Care\",\"name\":\"Telehealth / Video Consultation\",\"duration_min\":25,\"requirements\":[\"Government photo ID (Aadhaar, PAN, Passport, or Driving License)\",\"Previous prescriptions and medical reports\",\"List of current medications (with dosage)\",\"Health insurance card (if applicable)\",\"Referral letter from another doctor (if any)\"]},{\"id\":\"7\",\"category\":\"Diagnostics & Lab\",\"name\":\"Health Screening Package\",\"duration_min\":60,\"requirements\":[\"Government photo ID\",\"Doctor referral or prescription for tests\",\"Previous lab reports (if repeat tests)\",\"Fasting 8–12 hours for blood work (unless told otherwise)\",\"Comfortable clothing for imaging tests\"]},{\"id\":\"8\",\"category\":\"Diagnostics & Lab\",\"name\":\"Executive Health Checkup\",\"duration_min\":90,\"requirements\":[\"Government photo ID\",\"Doctor referral or prescription for tests\",\"Previous lab reports (if repeat tests)\",\"Fasting 8–12 hours for blood work (unless told otherwise)\",\"Comfortable clothing for imaging tests\"]},{\"id\":\"9\",\"category\":\"Diagnostics & Lab\",\"name\":\"Full Body Checkup\",\"duration_min\":75,\"requirements\":[\"Government photo ID\",\"Doctor referral or prescription for tests\",\"Previous lab reports (if repeat tests)\",\"Fasting 8–12 hours for blood work (unless told otherwise)\",\"Comfortable clothing for imaging tests\"]},{\"id\":\"10\",\"category\":\"Diagnostics & Lab\",\"name\":\"Lab Test / Blood Work\",\"duration_min\":20,\"requirements\":[\"Government photo ID\",\"Doctor referral or prescription for tests\",\"Previous lab reports (if repeat tests)\",\"Fasting 8–12 hours for blood work (unless told otherwise)\",\"Comfortable clothing for imaging tests\"]},{\"id\":\"11\",\"category\":\"Diagnostics & Lab\",\"name\":\"Urine Analysis\",\"duration_min\":15,\"requirements\":[\"Government photo ID\",\"Doctor referral or prescription for tests\",\"Previous lab reports (if repeat tests)\",\"Fasting 8–12 hours for blood work (unless told otherwise)\",\"Comfortable clothing for imaging tests\"]},{\"id\":\"12\",\"category\":\"Diagnostics & Lab\",\"name\":\"ECG / Heart Screening\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Doctor referral or prescription for tests\",\"Previous lab reports (if repeat tests)\",\"Fasting 8–12 hours for blood work (unless told otherwise)\",\"Comfortable clothing for imaging tests\"]},{\"id\":\"13\",\"category\":\"Diagnostics & Lab\",\"name\":\"X-Ray\",\"duration_min\":20,\"requirements\":[\"Government photo ID\",\"Doctor referral or prescription for tests\",\"Previous lab reports (if repeat tests)\",\"Fasting 8–12 hours for blood work (unless told otherwise)\",\"Comfortable clothing for imaging tests\"]},{\"id\":\"14\",\"category\":\"Diagnostics & Lab\",\"name\":\"Ultrasound\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Doctor referral or prescription for tests\",\"Previous lab reports (if repeat tests)\",\"Fasting 8–12 hours for blood work (unless told otherwise)\",\"Comfortable clothing for imaging tests\"]},{\"id\":\"15\",\"category\":\"Diagnostics & Lab\",\"name\":\"MRI Referral Consultation\",\"duration_min\":25,\"requirements\":[\"Government photo ID\",\"Doctor referral or prescription for tests\",\"Previous lab reports (if repeat tests)\",\"Fasting 8–12 hours for blood work (unless told otherwise)\",\"Comfortable clothing for imaging tests\"]},{\"id\":\"16\",\"category\":\"Diagnostics & Lab\",\"name\":\"CT Scan Referral Consultation\",\"duration_min\":25,\"requirements\":[\"Government photo ID\",\"Doctor referral or prescription for tests\",\"Previous lab reports (if repeat tests)\",\"Fasting 8–12 hours for blood work (unless told otherwise)\",\"Comfortable clothing for imaging tests\"]},{\"id\":\"17\",\"category\":\"Diagnostics & Lab\",\"name\":\"Allergy Testing\",\"duration_min\":45,\"requirements\":[\"Government photo ID\",\"Doctor referral or prescription for tests\",\"Previous lab reports (if repeat tests)\",\"Fasting 8–12 hours for blood work (unless told otherwise)\",\"Comfortable clothing for imaging tests\"]},{\"id\":\"18\",\"category\":\"Diagnostics & Lab\",\"name\":\"Diabetes Screening\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Doctor referral or prescription for tests\",\"Previous lab reports (if repeat tests)\",\"Fasting 8–12 hours for blood work (unless told otherwise)\",\"Comfortable clothing for imaging tests\"]},{\"id\":\"19\",\"category\":\"Diagnostics & Lab\",\"name\":\"Cholesterol / Lipid Panel\",\"duration_min\":20,\"requirements\":[\"Government photo ID\",\"Doctor referral or prescription for tests\",\"Previous lab reports (if repeat tests)\",\"Fasting 8–12 hours for blood work (unless told otherwise)\",\"Comfortable clothing for imaging tests\"]},{\"id\":\"20\",\"category\":\"Diagnostics & Lab\",\"name\":\"Thyroid Function Test\",\"duration_min\":20,\"requirements\":[\"Government photo ID\",\"Doctor referral or prescription for tests\",\"Previous lab reports (if repeat tests)\",\"Fasting 8–12 hours for blood work (unless told otherwise)\",\"Comfortable clothing for imaging tests\"]},{\"id\":\"21\",\"category\":\"Diagnostics & Lab\",\"name\":\"Liver Function Test\",\"duration_min\":20,\"requirements\":[\"Government photo ID\",\"Doctor referral or prescription for tests\",\"Previous lab reports (if repeat tests)\",\"Fasting 8–12 hours for blood work (unless told otherwise)\",\"Comfortable clothing for imaging tests\"]},{\"id\":\"22\",\"category\":\"Diagnostics & Lab\",\"name\":\"Kidney Function Test\",\"duration_min\":20,\"requirements\":[\"Government photo ID\",\"Doctor referral or prescription for tests\",\"Previous lab reports (if repeat tests)\",\"Fasting 8–12 hours for blood work (unless told otherwise)\",\"Comfortable clothing for imaging tests\"]},{\"id\":\"23\",\"category\":\"Dental\",\"name\":\"Dental Checkup\",\"duration_min\":45,\"requirements\":[\"Government photo ID\",\"Previous dental X-rays or treatment records\",\"List of medications and allergies\",\"Insurance details (if applicable)\",\"Brush teeth before visit; avoid heavy meals right before\"]},{\"id\":\"24\",\"category\":\"Dental\",\"name\":\"Teeth Cleaning / Scaling\",\"duration_min\":40,\"requirements\":[\"Government photo ID\",\"Previous dental X-rays or treatment records\",\"List of medications and allergies\",\"Insurance details (if applicable)\",\"Brush teeth before visit; avoid heavy meals right before\"]},{\"id\":\"25\",\"category\":\"Dental\",\"name\":\"Root Canal Consultation\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Previous dental X-rays or treatment records\",\"List of medications and allergies\",\"Insurance details (if applicable)\",\"Brush teeth before visit; avoid heavy meals right before\"]},{\"id\":\"26\",\"category\":\"Dental\",\"name\":\"Tooth Extraction Consultation\",\"duration_min\":25,\"requirements\":[\"Government photo ID\",\"Previous dental X-rays or treatment records\",\"List of medications and allergies\",\"Insurance details (if applicable)\",\"Brush teeth before visit; avoid heavy meals right before\"]},{\"id\":\"27\",\"category\":\"Dental\",\"name\":\"Orthodontics / Braces Consultation\",\"duration_min\":35,\"requirements\":[\"Government photo ID\",\"Previous dental X-rays or treatment records\",\"List of medications and allergies\",\"Insurance details (if applicable)\",\"Brush teeth before visit; avoid heavy meals right before\"]},{\"id\":\"28\",\"category\":\"Dental\",\"name\":\"Cosmetic Dentistry Consultation\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Previous dental X-rays or treatment records\",\"List of medications and allergies\",\"Insurance details (if applicable)\",\"Brush teeth before visit; avoid heavy meals right before\"]},{\"id\":\"29\",\"category\":\"Eye Care\",\"name\":\"Eye / Vision Checkup\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Current glasses or contact lens prescription\",\"Previous eye exam reports\",\"List of eye medications (drops, etc.)\",\"Do not wear contact lenses on the day of certain tests\"]},{\"id\":\"30\",\"category\":\"Eye Care\",\"name\":\"Contact Lens Fitting\",\"duration_min\":25,\"requirements\":[\"Government photo ID\",\"Current glasses or contact lens prescription\",\"Previous eye exam reports\",\"List of eye medications (drops, etc.)\",\"Do not wear contact lenses on the day of certain tests\"]},{\"id\":\"31\",\"category\":\"Eye Care\",\"name\":\"Glaucoma Screening\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Current glasses or contact lens prescription\",\"Previous eye exam reports\",\"List of eye medications (drops, etc.)\",\"Do not wear contact lenses on the day of certain tests\"]},{\"id\":\"32\",\"category\":\"Eye Care\",\"name\":\"Cataract Consultation\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Current glasses or contact lens prescription\",\"Previous eye exam reports\",\"List of eye medications (drops, etc.)\",\"Do not wear contact lenses on the day of certain tests\"]},{\"id\":\"33\",\"category\":\"Dermatology & Skin\",\"name\":\"Dermatology Consultation\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"List of current skin medications and products used\",\"Previous biopsy or allergy test reports\",\"Photos of skin condition (if symptoms vary)\",\"Avoid applying creams/lotions on affected area before visit\"]},{\"id\":\"34\",\"category\":\"Dermatology & Skin\",\"name\":\"Acne Treatment Consultation\",\"duration_min\":25,\"requirements\":[\"Government photo ID\",\"List of current skin medications and products used\",\"Previous biopsy or allergy test reports\",\"Photos of skin condition (if symptoms vary)\",\"Avoid applying creams/lotions on affected area before visit\"]},{\"id\":\"35\",\"category\":\"Dermatology & Skin\",\"name\":\"Skin Allergy Consultation\",\"duration_min\":25,\"requirements\":[\"Government photo ID\",\"List of current skin medications and products used\",\"Previous biopsy or allergy test reports\",\"Photos of skin condition (if symptoms vary)\",\"Avoid applying creams/lotions on affected area before visit\"]},{\"id\":\"36\",\"category\":\"Dermatology & Skin\",\"name\":\"Hair Loss Consultation\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"List of current skin medications and products used\",\"Previous biopsy or allergy test reports\",\"Photos of skin condition (if symptoms vary)\",\"Avoid applying creams/lotions on affected area before visit\"]},{\"id\":\"37\",\"category\":\"Dermatology & Skin\",\"name\":\"Cosmetic Dermatology\",\"duration_min\":35,\"requirements\":[\"Government photo ID\",\"List of current skin medications and products used\",\"Previous biopsy or allergy test reports\",\"Photos of skin condition (if symptoms vary)\",\"Avoid applying creams/lotions on affected area before visit\"]},{\"id\":\"38\",\"category\":\"Cardiology & Heart\",\"name\":\"Cardiology Consultation\",\"duration_min\":40,\"requirements\":[\"Government photo ID\",\"Previous ECG, echo, or cardiac reports\",\"List of heart medications and blood pressure readings\",\"Health insurance card\",\"Wear comfortable clothes; avoid caffeine before tests if advised\"]},{\"id\":\"39\",\"category\":\"Cardiology & Heart\",\"name\":\"Blood Pressure Management\",\"duration_min\":25,\"requirements\":[\"Government photo ID\",\"Previous ECG, echo, or cardiac reports\",\"List of heart medications and blood pressure readings\",\"Health insurance card\",\"Wear comfortable clothes; avoid caffeine before tests if advised\"]},{\"id\":\"40\",\"category\":\"Cardiology & Heart\",\"name\":\"Heart Health Follow-up\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Previous ECG, echo, or cardiac reports\",\"List of heart medications and blood pressure readings\",\"Health insurance card\",\"Wear comfortable clothes; avoid caffeine before tests if advised\"]},{\"id\":\"41\",\"category\":\"Orthopedics & Musculoskeletal\",\"name\":\"Orthopedics Consultation\",\"duration_min\":35,\"requirements\":[\"Government photo ID\",\"Previous X-ray, MRI, or physiotherapy reports\",\"List of pain medications and supplements\",\"Comfortable clothing; shorts for knee/leg exams if needed\",\"Referral from primary doctor (if required)\"]},{\"id\":\"42\",\"category\":\"Orthopedics & Musculoskeletal\",\"name\":\"Sports Injury Consultation\",\"duration_min\":35,\"requirements\":[\"Government photo ID\",\"Previous X-ray, MRI, or physiotherapy reports\",\"List of pain medications and supplements\",\"Comfortable clothing; shorts for knee/leg exams if needed\",\"Referral from primary doctor (if required)\"]},{\"id\":\"43\",\"category\":\"Orthopedics & Musculoskeletal\",\"name\":\"Joint Pain Consultation\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Previous X-ray, MRI, or physiotherapy reports\",\"List of pain medications and supplements\",\"Comfortable clothing; shorts for knee/leg exams if needed\",\"Referral from primary doctor (if required)\"]},{\"id\":\"44\",\"category\":\"Orthopedics & Musculoskeletal\",\"name\":\"Back & Neck Pain Consultation\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Previous X-ray, MRI, or physiotherapy reports\",\"List of pain medications and supplements\",\"Comfortable clothing; shorts for knee/leg exams if needed\",\"Referral from primary doctor (if required)\"]},{\"id\":\"45\",\"category\":\"Orthopedics & Musculoskeletal\",\"name\":\"Fracture Follow-up\",\"duration_min\":20,\"requirements\":[\"Government photo ID\",\"Previous X-ray, MRI, or physiotherapy reports\",\"List of pain medications and supplements\",\"Comfortable clothing; shorts for knee/leg exams if needed\",\"Referral from primary doctor (if required)\"]},{\"id\":\"46\",\"category\":\"Orthopedics & Musculoskeletal\",\"name\":\"Physiotherapy Session\",\"duration_min\":45,\"requirements\":[\"Government photo ID\",\"Previous X-ray, MRI, or physiotherapy reports\",\"List of pain medications and supplements\",\"Comfortable clothing; shorts for knee/leg exams if needed\",\"Referral from primary doctor (if required)\"]},{\"id\":\"47\",\"category\":\"Orthopedics & Musculoskeletal\",\"name\":\"Rehabilitation Session\",\"duration_min\":45,\"requirements\":[\"Government photo ID\",\"Previous X-ray, MRI, or physiotherapy reports\",\"List of pain medications and supplements\",\"Comfortable clothing; shorts for knee/leg exams if needed\",\"Referral from primary doctor (if required)\"]},{\"id\":\"48\",\"category\":\"Orthopedics & Musculoskeletal\",\"name\":\"Sports Physiotherapy\",\"duration_min\":50,\"requirements\":[\"Government photo ID\",\"Previous X-ray, MRI, or physiotherapy reports\",\"List of pain medications and supplements\",\"Comfortable clothing; shorts for knee/leg exams if needed\",\"Referral from primary doctor (if required)\"]},{\"id\":\"49\",\"category\":\"Women's Health\",\"name\":\"Gynecology Consultation\",\"duration_min\":35,\"requirements\":[\"Government photo ID\",\"Previous gynecology or pregnancy reports\",\"Menstrual cycle details (last period date)\",\"List of medications and supplements\",\"Insurance or maternity scheme documents (if applicable)\"]},{\"id\":\"50\",\"category\":\"Women's Health\",\"name\":\"Prenatal / Antenatal Visit\",\"duration_min\":40,\"requirements\":[\"Government photo ID\",\"Previous gynecology or pregnancy reports\",\"Menstrual cycle details (last period date)\",\"List of medications and supplements\",\"Insurance or maternity scheme documents (if applicable)\"]},{\"id\":\"51\",\"category\":\"Women's Health\",\"name\":\"Postnatal Checkup\",\"duration_min\":35,\"requirements\":[\"Government photo ID\",\"Previous gynecology or pregnancy reports\",\"Menstrual cycle details (last period date)\",\"List of medications and supplements\",\"Insurance or maternity scheme documents (if applicable)\"]},{\"id\":\"52\",\"category\":\"Women's Health\",\"name\":\"Family Planning Consultation\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Previous gynecology or pregnancy reports\",\"Menstrual cycle details (last period date)\",\"List of medications and supplements\",\"Insurance or maternity scheme documents (if applicable)\"]},{\"id\":\"53\",\"category\":\"Women's Health\",\"name\":\"Menopause Consultation\",\"duration_min\":35,\"requirements\":[\"Government photo ID\",\"Previous gynecology or pregnancy reports\",\"Menstrual cycle details (last period date)\",\"List of medications and supplements\",\"Insurance or maternity scheme documents (if applicable)\"]},{\"id\":\"54\",\"category\":\"Pediatrics\",\"name\":\"Pediatric Consultation\",\"duration_min\":30,\"requirements\":[\"Child birth certificate or ID proof\",\"Vaccination card / immunization record\",\"Previous pediatric reports and growth charts\",\"List of current medications\",\"Parent/guardian photo ID\"]},{\"id\":\"55\",\"category\":\"Pediatrics\",\"name\":\"Child Vaccination\",\"duration_min\":20,\"requirements\":[\"Child birth certificate or ID proof\",\"Vaccination card / immunization record\",\"Previous pediatric reports and growth charts\",\"List of current medications\",\"Parent/guardian photo ID\"]},{\"id\":\"56\",\"category\":\"Pediatrics\",\"name\":\"Growth & Development Check\",\"duration_min\":30,\"requirements\":[\"Child birth certificate or ID proof\",\"Vaccination card / immunization record\",\"Previous pediatric reports and growth charts\",\"List of current medications\",\"Parent/guardian photo ID\"]},{\"id\":\"57\",\"category\":\"Pediatrics\",\"name\":\"Newborn Wellness Visit\",\"duration_min\":35,\"requirements\":[\"Child birth certificate or ID proof\",\"Vaccination card / immunization record\",\"Previous pediatric reports and growth charts\",\"List of current medications\",\"Parent/guardian photo ID\"]},{\"id\":\"58\",\"category\":\"Mental Health & Wellness\",\"name\":\"Mental Health Counseling\",\"duration_min\":50,\"requirements\":[\"Government photo ID\",\"Previous counseling or psychiatric reports\",\"List of current medications\",\"Emergency contact details\",\"Quiet private space for telehealth sessions\"]},{\"id\":\"59\",\"category\":\"Mental Health & Wellness\",\"name\":\"Stress & Anxiety Counseling\",\"duration_min\":45,\"requirements\":[\"Government photo ID\",\"Previous counseling or psychiatric reports\",\"List of current medications\",\"Emergency contact details\",\"Quiet private space for telehealth sessions\"]},{\"id\":\"60\",\"category\":\"Mental Health & Wellness\",\"name\":\"Depression Support Session\",\"duration_min\":50,\"requirements\":[\"Government photo ID\",\"Previous counseling or psychiatric reports\",\"List of current medications\",\"Emergency contact details\",\"Quiet private space for telehealth sessions\"]},{\"id\":\"61\",\"category\":\"Mental Health & Wellness\",\"name\":\"Couples / Family Counseling\",\"duration_min\":60,\"requirements\":[\"Government photo ID\",\"Previous counseling or psychiatric reports\",\"List of current medications\",\"Emergency contact details\",\"Quiet private space for telehealth sessions\"]},{\"id\":\"62\",\"category\":\"Nutrition & Lifestyle\",\"name\":\"Nutrition & Diet Planning\",\"duration_min\":40,\"requirements\":[\"Government photo ID\",\"Recent blood work or health reports\",\"Food diary or weight log (if available)\",\"List of supplements and medications\",\"Health goals written down\"]},{\"id\":\"63\",\"category\":\"Nutrition & Lifestyle\",\"name\":\"Weight Management Program\",\"duration_min\":45,\"requirements\":[\"Government photo ID\",\"Recent blood work or health reports\",\"Food diary or weight log (if available)\",\"List of supplements and medications\",\"Health goals written down\"]},{\"id\":\"64\",\"category\":\"Nutrition & Lifestyle\",\"name\":\"Diabetes Diet Counseling\",\"duration_min\":40,\"requirements\":[\"Government photo ID\",\"Recent blood work or health reports\",\"Food diary or weight log (if available)\",\"List of supplements and medications\",\"Health goals written down\"]},{\"id\":\"65\",\"category\":\"Vaccination & Immunization\",\"name\":\"Adult Vaccination\",\"duration_min\":15,\"requirements\":[\"Government photo ID\",\"Previous vaccination card / records\",\"Allergy history\",\"Doctor prescription for travel vaccines (if applicable)\",\"Wear loose sleeves for arm injection\"]},{\"id\":\"66\",\"category\":\"Vaccination & Immunization\",\"name\":\"Flu Shot\",\"duration_min\":15,\"requirements\":[\"Government photo ID\",\"Previous vaccination card / records\",\"Allergy history\",\"Doctor prescription for travel vaccines (if applicable)\",\"Wear loose sleeves for arm injection\"]},{\"id\":\"67\",\"category\":\"Vaccination & Immunization\",\"name\":\"Travel Vaccination\",\"duration_min\":25,\"requirements\":[\"Government photo ID\",\"Previous vaccination card / records\",\"Allergy history\",\"Doctor prescription for travel vaccines (if applicable)\",\"Wear loose sleeves for arm injection\"]},{\"id\":\"68\",\"category\":\"Vaccination & Immunization\",\"name\":\"COVID Vaccination\",\"duration_min\":15,\"requirements\":[\"Government photo ID\",\"Previous vaccination card / records\",\"Allergy history\",\"Doctor prescription for travel vaccines (if applicable)\",\"Wear loose sleeves for arm injection\"]},{\"id\":\"69\",\"category\":\"ENT\",\"name\":\"ENT Consultation\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Previous hearing or ENT reports\",\"List of medications and allergies\",\"Insurance details (if applicable)\",\"Avoid ear drops before hearing tests unless advised\"]},{\"id\":\"70\",\"category\":\"ENT\",\"name\":\"Hearing Test\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Previous hearing or ENT reports\",\"List of medications and allergies\",\"Insurance details (if applicable)\",\"Avoid ear drops before hearing tests unless advised\"]},{\"id\":\"71\",\"category\":\"ENT\",\"name\":\"Sinus / Allergy ENT Consult\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Previous hearing or ENT reports\",\"List of medications and allergies\",\"Insurance details (if applicable)\",\"Avoid ear drops before hearing tests unless advised\"]},{\"id\":\"72\",\"category\":\"Other Specialties\",\"name\":\"Urology Consultation\",\"duration_min\":35,\"requirements\":[\"Government photo ID\",\"Referral letter from primary doctor\",\"Previous specialist reports and test results\",\"List of current medications\",\"Health insurance card (if applicable)\"]},{\"id\":\"73\",\"category\":\"Other Specialties\",\"name\":\"Kidney Stone Consultation\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Referral letter from primary doctor\",\"Previous specialist reports and test results\",\"List of current medications\",\"Health insurance card (if applicable)\"]},{\"id\":\"74\",\"category\":\"Other Specialties\",\"name\":\"Gastroenterology Consultation\",\"duration_min\":35,\"requirements\":[\"Government photo ID\",\"Referral letter from primary doctor\",\"Previous specialist reports and test results\",\"List of current medications\",\"Health insurance card (if applicable)\"]},{\"id\":\"75\",\"category\":\"Other Specialties\",\"name\":\"Digestive Health Consultation\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Referral letter from primary doctor\",\"Previous specialist reports and test results\",\"List of current medications\",\"Health insurance card (if applicable)\"]},{\"id\":\"76\",\"category\":\"Other Specialties\",\"name\":\"Pulmonology / Respiratory Consult\",\"duration_min\":35,\"requirements\":[\"Government photo ID\",\"Referral letter from primary doctor\",\"Previous specialist reports and test results\",\"List of current medications\",\"Health insurance card (if applicable)\"]},{\"id\":\"77\",\"category\":\"Other Specialties\",\"name\":\"Asthma Management\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Referral letter from primary doctor\",\"Previous specialist reports and test results\",\"List of current medications\",\"Health insurance card (if applicable)\"]},{\"id\":\"78\",\"category\":\"Other Specialties\",\"name\":\"Neurology Consultation\",\"duration_min\":40,\"requirements\":[\"Government photo ID\",\"Referral letter from primary doctor\",\"Previous specialist reports and test results\",\"List of current medications\",\"Health insurance card (if applicable)\"]},{\"id\":\"79\",\"category\":\"Other Specialties\",\"name\":\"Migraine / Headache Consultation\",\"duration_min\":35,\"requirements\":[\"Government photo ID\",\"Referral letter from primary doctor\",\"Previous specialist reports and test results\",\"List of current medications\",\"Health insurance card (if applicable)\"]},{\"id\":\"80\",\"category\":\"Other Specialties\",\"name\":\"Oncology Consultation (Initial)\",\"duration_min\":45,\"requirements\":[\"Government photo ID\",\"Referral letter from primary doctor\",\"Previous specialist reports and test results\",\"List of current medications\",\"Health insurance card (if applicable)\"]},{\"id\":\"81\",\"category\":\"Other Specialties\",\"name\":\"Cancer Care Follow-up\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Referral letter from primary doctor\",\"Previous specialist reports and test results\",\"List of current medications\",\"Health insurance card (if applicable)\"]},{\"id\":\"82\",\"category\":\"Other Specialties\",\"name\":\"Endocrinology Consultation\",\"duration_min\":35,\"requirements\":[\"Government photo ID\",\"Referral letter from primary doctor\",\"Previous specialist reports and test results\",\"List of current medications\",\"Health insurance card (if applicable)\"]},{\"id\":\"83\",\"category\":\"Other Specialties\",\"name\":\"Rheumatology Consultation\",\"duration_min\":35,\"requirements\":[\"Government photo ID\",\"Referral letter from primary doctor\",\"Previous specialist reports and test results\",\"List of current medications\",\"Health insurance card (if applicable)\"]},{\"id\":\"84\",\"category\":\"Other Specialties\",\"name\":\"Nephrology Consultation\",\"duration_min\":35,\"requirements\":[\"Government photo ID\",\"Referral letter from primary doctor\",\"Previous specialist reports and test results\",\"List of current medications\",\"Health insurance card (if applicable)\"]},{\"id\":\"85\",\"category\":\"Other Specialties\",\"name\":\"Hematology Consultation\",\"duration_min\":35,\"requirements\":[\"Government photo ID\",\"Referral letter from primary doctor\",\"Previous specialist reports and test results\",\"List of current medications\",\"Health insurance card (if applicable)\"]},{\"id\":\"86\",\"category\":\"Other Specialties\",\"name\":\"Sleep Medicine Consultation\",\"duration_min\":40,\"requirements\":[\"Government photo ID\",\"Referral letter from primary doctor\",\"Previous specialist reports and test results\",\"List of current medications\",\"Health insurance card (if applicable)\"]},{\"id\":\"87\",\"category\":\"Other Specialties\",\"name\":\"Pain Management Consultation\",\"duration_min\":40,\"requirements\":[\"Government photo ID\",\"Referral letter from primary doctor\",\"Previous specialist reports and test results\",\"List of current medications\",\"Health insurance card (if applicable)\"]},{\"id\":\"88\",\"category\":\"Other Specialties\",\"name\":\"Geriatric / Senior Care Consultation\",\"duration_min\":40,\"requirements\":[\"Government photo ID\",\"Referral letter from primary doctor\",\"Previous specialist reports and test results\",\"List of current medications\",\"Health insurance card (if applicable)\"]},{\"id\":\"89\",\"category\":\"Movies & Entertainment\",\"name\":\"Movie Ticket (Standard)\",\"duration_min\":180,\"requirements\":[\"Booking confirmation (this message) or Booking ID\",\"Government photo ID matching ticket name\",\"Mobile phone for e-ticket / QR code\",\"Payment receipt (if paid offline)\"]},{\"id\":\"90\",\"category\":\"Movies & Entertainment\",\"name\":\"Movie Ticket (3D / IMAX)\",\"duration_min\":180,\"requirements\":[\"Booking confirmation (this message) or Booking ID\",\"Government photo ID matching ticket name\",\"Mobile phone for e-ticket / QR code\",\"Payment receipt (if paid offline)\"]},{\"id\":\"91\",\"category\":\"Movies & Entertainment\",\"name\":\"Concert Ticket\",\"duration_min\":180,\"requirements\":[\"Booking confirmation (this message) or Booking ID\",\"Government photo ID matching ticket name\",\"Mobile phone for e-ticket / QR code\",\"Payment receipt (if paid offline)\"]},{\"id\":\"92\",\"category\":\"Movies & Entertainment\",\"name\":\"Theater / Play Ticket\",\"duration_min\":150,\"requirements\":[\"Booking confirmation (this message) or Booking ID\",\"Government photo ID matching ticket name\",\"Mobile phone for e-ticket / QR code\",\"Payment receipt (if paid offline)\"]},{\"id\":\"93\",\"category\":\"Movies & Entertainment\",\"name\":\"Sports Event Ticket\",\"duration_min\":180,\"requirements\":[\"Booking confirmation (this message) or Booking ID\",\"Government photo ID matching ticket name\",\"Mobile phone for e-ticket / QR code\",\"Payment receipt (if paid offline)\"]},{\"id\":\"94\",\"category\":\"Movies & Entertainment\",\"name\":\"Theme Park Ticket\",\"duration_min\":480,\"requirements\":[\"Booking confirmation (this message) or Booking ID\",\"Government photo ID matching ticket name\",\"Mobile phone for e-ticket / QR code\",\"Payment receipt (if paid offline)\"]},{\"id\":\"95\",\"category\":\"Movies & Entertainment\",\"name\":\"Museum Entry Ticket\",\"duration_min\":120,\"requirements\":[\"Booking confirmation (this message) or Booking ID\",\"Government photo ID matching ticket name\",\"Mobile phone for e-ticket / QR code\",\"Payment receipt (if paid offline)\"]},{\"id\":\"96\",\"category\":\"Movies & Entertainment\",\"name\":\"Amusement Park Pass\",\"duration_min\":360,\"requirements\":[\"Booking confirmation (this message) or Booking ID\",\"Government photo ID matching ticket name\",\"Mobile phone for e-ticket / QR code\",\"Payment receipt (if paid offline)\"]},{\"id\":\"97\",\"category\":\"Movies & Entertainment\",\"name\":\"Comedy Show Ticket\",\"duration_min\":120,\"requirements\":[\"Booking confirmation (this message) or Booking ID\",\"Government photo ID matching ticket name\",\"Mobile phone for e-ticket / QR code\",\"Payment receipt (if paid offline)\"]},{\"id\":\"98\",\"category\":\"Movies & Entertainment\",\"name\":\"Live Music / DJ Event\",\"duration_min\":180,\"requirements\":[\"Booking confirmation (this message) or Booking ID\",\"Government photo ID matching ticket name\",\"Mobile phone for e-ticket / QR code\",\"Payment receipt (if paid offline)\"]},{\"id\":\"99\",\"category\":\"Movies & Entertainment\",\"name\":\"Stand-up Comedy Night\",\"duration_min\":120,\"requirements\":[\"Booking confirmation (this message) or Booking ID\",\"Government photo ID matching ticket name\",\"Mobile phone for e-ticket / QR code\",\"Payment receipt (if paid offline)\"]},{\"id\":\"100\",\"category\":\"Movies & Entertainment\",\"name\":\"Exhibition / Expo Entry\",\"duration_min\":180,\"requirements\":[\"Booking confirmation (this message) or Booking ID\",\"Government photo ID matching ticket name\",\"Mobile phone for e-ticket / QR code\",\"Payment receipt (if paid offline)\"]},{\"id\":\"101\",\"category\":\"Travel & Transport\",\"name\":\"Bus Ticket\",\"duration_min\":120,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"102\",\"category\":\"Travel & Transport\",\"name\":\"Intercity Bus Ticket\",\"duration_min\":360,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"103\",\"category\":\"Travel & Transport\",\"name\":\"Volvo / AC Bus Ticket\",\"duration_min\":360,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"104\",\"category\":\"Travel & Transport\",\"name\":\"Sleeper Bus Ticket\",\"duration_min\":480,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"105\",\"category\":\"Travel & Transport\",\"name\":\"Train Ticket (General)\",\"duration_min\":180,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"106\",\"category\":\"Travel & Transport\",\"name\":\"Train Ticket (AC)\",\"duration_min\":240,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"107\",\"category\":\"Travel & Transport\",\"name\":\"Train Ticket (Sleeper)\",\"duration_min\":480,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"108\",\"category\":\"Travel & Transport\",\"name\":\"Flight Ticket Booking\",\"duration_min\":180,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"109\",\"category\":\"Travel & Transport\",\"name\":\"Domestic Flight Booking\",\"duration_min\":180,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"110\",\"category\":\"Travel & Transport\",\"name\":\"International Flight Booking\",\"duration_min\":240,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"111\",\"category\":\"Travel & Transport\",\"name\":\"Metro / Subway Pass\",\"duration_min\":60,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"112\",\"category\":\"Travel & Transport\",\"name\":\"Ferry / Boat Ticket\",\"duration_min\":120,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"113\",\"category\":\"Travel & Transport\",\"name\":\"Taxi / Cab Booking\",\"duration_min\":60,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"114\",\"category\":\"Travel & Transport\",\"name\":\"Ride Share Booking (Uber/Ola)\",\"duration_min\":45,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"115\",\"category\":\"Travel & Transport\",\"name\":\"Car Rental Booking\",\"duration_min\":1440,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"116\",\"category\":\"Travel & Transport\",\"name\":\"Bike / Scooter Rental\",\"duration_min\":240,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"117\",\"category\":\"Travel & Transport\",\"name\":\"Charter Bus Booking\",\"duration_min\":480,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"118\",\"category\":\"Travel & Transport\",\"name\":\"Airport Transfer\",\"duration_min\":90,\"requirements\":[\"Government photo ID (Aadhaar, Passport, or Driving License)\",\"Booking ID and confirmation details\",\"Passport & visa (for international travel)\",\"Student / senior citizen ID for concessions (if applicable)\",\"Arrive 30–60 minutes before departure\"]},{\"id\":\"119\",\"category\":\"Hotels & Accommodation\",\"name\":\"Hotel Room Booking\",\"duration_min\":1440,\"requirements\":[\"Government photo ID (mandatory at check-in)\",\"Booking confirmation and Booking ID\",\"Payment card or advance payment receipt\",\"Corporate / GST details (for business stays)\",\"Special requests noted at booking (early check-in, etc.)\"]},{\"id\":\"120\",\"category\":\"Hotels & Accommodation\",\"name\":\"Resort Booking\",\"duration_min\":1440,\"requirements\":[\"Government photo ID (mandatory at check-in)\",\"Booking confirmation and Booking ID\",\"Payment card or advance payment receipt\",\"Corporate / GST details (for business stays)\",\"Special requests noted at booking (early check-in, etc.)\"]},{\"id\":\"121\",\"category\":\"Hotels & Accommodation\",\"name\":\"Homestay / Airbnb Booking\",\"duration_min\":1440,\"requirements\":[\"Government photo ID (mandatory at check-in)\",\"Booking confirmation and Booking ID\",\"Payment card or advance payment receipt\",\"Corporate / GST details (for business stays)\",\"Special requests noted at booking (early check-in, etc.)\"]},{\"id\":\"122\",\"category\":\"Hotels & Accommodation\",\"name\":\"Hostel Booking\",\"duration_min\":720,\"requirements\":[\"Government photo ID (mandatory at check-in)\",\"Booking confirmation and Booking ID\",\"Payment card or advance payment receipt\",\"Corporate / GST details (for business stays)\",\"Special requests noted at booking (early check-in, etc.)\"]},{\"id\":\"123\",\"category\":\"Hotels & Accommodation\",\"name\":\"Vacation Package\",\"duration_min\":4320,\"requirements\":[\"Government photo ID (mandatory at check-in)\",\"Booking confirmation and Booking ID\",\"Payment card or advance payment receipt\",\"Corporate / GST details (for business stays)\",\"Special requests noted at booking (early check-in, etc.)\"]},{\"id\":\"124\",\"category\":\"Hotels & Accommodation\",\"name\":\"Hourly Hotel Room\",\"duration_min\":180,\"requirements\":[\"Government photo ID (mandatory at check-in)\",\"Booking confirmation and Booking ID\",\"Payment card or advance payment receipt\",\"Corporate / GST details (for business stays)\",\"Special requests noted at booking (early check-in, etc.)\"]},{\"id\":\"125\",\"category\":\"Hotels & Accommodation\",\"name\":\"Lodge / Guest House Booking\",\"duration_min\":720,\"requirements\":[\"Government photo ID (mandatory at check-in)\",\"Booking confirmation and Booking ID\",\"Payment card or advance payment receipt\",\"Corporate / GST details (for business stays)\",\"Special requests noted at booking (early check-in, etc.)\"]},{\"id\":\"126\",\"category\":\"Food & Dining\",\"name\":\"Restaurant Table Reservation\",\"duration_min\":90,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID (for large parties or prepaid bookings)\",\"Advance payment receipt (if applicable)\",\"Dietary restrictions communicated in advance\",\"Arrive 10–15 minutes before reservation time\"]},{\"id\":\"127\",\"category\":\"Food & Dining\",\"name\":\"Cafe Booking\",\"duration_min\":60,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID (for large parties or prepaid bookings)\",\"Advance payment receipt (if applicable)\",\"Dietary restrictions communicated in advance\",\"Arrive 10–15 minutes before reservation time\"]},{\"id\":\"128\",\"category\":\"Food & Dining\",\"name\":\"Banquet Hall Booking\",\"duration_min\":240,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID (for large parties or prepaid bookings)\",\"Advance payment receipt (if applicable)\",\"Dietary restrictions communicated in advance\",\"Arrive 10–15 minutes before reservation time\"]},{\"id\":\"129\",\"category\":\"Food & Dining\",\"name\":\"Catering Service Booking\",\"duration_min\":180,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID (for large parties or prepaid bookings)\",\"Advance payment receipt (if applicable)\",\"Dietary restrictions communicated in advance\",\"Arrive 10–15 minutes before reservation time\"]},{\"id\":\"130\",\"category\":\"Food & Dining\",\"name\":\"Private Dining Room\",\"duration_min\":120,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID (for large parties or prepaid bookings)\",\"Advance payment receipt (if applicable)\",\"Dietary restrictions communicated in advance\",\"Arrive 10–15 minutes before reservation time\"]},{\"id\":\"131\",\"category\":\"Food & Dining\",\"name\":\"Food Delivery Slot Booking\",\"duration_min\":30,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID (for large parties or prepaid bookings)\",\"Advance payment receipt (if applicable)\",\"Dietary restrictions communicated in advance\",\"Arrive 10–15 minutes before reservation time\"]},{\"id\":\"132\",\"category\":\"Events & Celebrations\",\"name\":\"Wedding Venue Booking\",\"duration_min\":480,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID of event organizer\",\"Advance payment receipt / contract copy\",\"Guest list and seating plan (if applicable)\",\"Vendor contact details for coordination\"]},{\"id\":\"133\",\"category\":\"Events & Celebrations\",\"name\":\"Birthday Party Hall\",\"duration_min\":240,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID of event organizer\",\"Advance payment receipt / contract copy\",\"Guest list and seating plan (if applicable)\",\"Vendor contact details for coordination\"]},{\"id\":\"134\",\"category\":\"Events & Celebrations\",\"name\":\"Conference Room Booking\",\"duration_min\":180,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID of event organizer\",\"Advance payment receipt / contract copy\",\"Guest list and seating plan (if applicable)\",\"Vendor contact details for coordination\"]},{\"id\":\"135\",\"category\":\"Events & Celebrations\",\"name\":\"Event Photography Session\",\"duration_min\":180,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID of event organizer\",\"Advance payment receipt / contract copy\",\"Guest list and seating plan (if applicable)\",\"Vendor contact details for coordination\"]},{\"id\":\"136\",\"category\":\"Events & Celebrations\",\"name\":\"DJ / Entertainment Booking\",\"duration_min\":240,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID of event organizer\",\"Advance payment receipt / contract copy\",\"Guest list and seating plan (if applicable)\",\"Vendor contact details for coordination\"]},{\"id\":\"137\",\"category\":\"Events & Celebrations\",\"name\":\"Corporate Event Booking\",\"duration_min\":360,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID of event organizer\",\"Advance payment receipt / contract copy\",\"Guest list and seating plan (if applicable)\",\"Vendor contact details for coordination\"]},{\"id\":\"138\",\"category\":\"Events & Celebrations\",\"name\":\"Baby Shower / Naming Ceremony Hall\",\"duration_min\":240,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID of event organizer\",\"Advance payment receipt / contract copy\",\"Guest list and seating plan (if applicable)\",\"Vendor contact details for coordination\"]},{\"id\":\"139\",\"category\":\"Beauty & Grooming\",\"name\":\"Salon Appointment\",\"duration_min\":60,\"requirements\":[\"Booking confirmation\",\"Patch test results (for hair color / chemical treatments)\",\"List of allergies and skin sensitivities\",\"Reference photos for desired style (optional)\",\"Arrive with clean hair/skin as advised by salon\"]},{\"id\":\"140\",\"category\":\"Beauty & Grooming\",\"name\":\"Barber / Haircut\",\"duration_min\":30,\"requirements\":[\"Booking confirmation\",\"Patch test results (for hair color / chemical treatments)\",\"List of allergies and skin sensitivities\",\"Reference photos for desired style (optional)\",\"Arrive with clean hair/skin as advised by salon\"]},{\"id\":\"141\",\"category\":\"Beauty & Grooming\",\"name\":\"Spa & Massage\",\"duration_min\":90,\"requirements\":[\"Booking confirmation\",\"Patch test results (for hair color / chemical treatments)\",\"List of allergies and skin sensitivities\",\"Reference photos for desired style (optional)\",\"Arrive with clean hair/skin as advised by salon\"]},{\"id\":\"142\",\"category\":\"Beauty & Grooming\",\"name\":\"Bridal Makeup\",\"duration_min\":120,\"requirements\":[\"Booking confirmation\",\"Patch test results (for hair color / chemical treatments)\",\"List of allergies and skin sensitivities\",\"Reference photos for desired style (optional)\",\"Arrive with clean hair/skin as advised by salon\"]},{\"id\":\"143\",\"category\":\"Beauty & Grooming\",\"name\":\"Nail Art / Manicure\",\"duration_min\":45,\"requirements\":[\"Booking confirmation\",\"Patch test results (for hair color / chemical treatments)\",\"List of allergies and skin sensitivities\",\"Reference photos for desired style (optional)\",\"Arrive with clean hair/skin as advised by salon\"]},{\"id\":\"144\",\"category\":\"Beauty & Grooming\",\"name\":\"Tattoo Consultation\",\"duration_min\":60,\"requirements\":[\"Booking confirmation\",\"Patch test results (for hair color / chemical treatments)\",\"List of allergies and skin sensitivities\",\"Reference photos for desired style (optional)\",\"Arrive with clean hair/skin as advised by salon\"]},{\"id\":\"145\",\"category\":\"Beauty & Grooming\",\"name\":\"Threading / Waxing\",\"duration_min\":30,\"requirements\":[\"Booking confirmation\",\"Patch test results (for hair color / chemical treatments)\",\"List of allergies and skin sensitivities\",\"Reference photos for desired style (optional)\",\"Arrive with clean hair/skin as advised by salon\"]},{\"id\":\"146\",\"category\":\"Fitness & Recreation\",\"name\":\"Gym Session Pass\",\"duration_min\":90,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID\",\"Sports shoes and appropriate workout attire\",\"Medical clearance (for intensive training, if required)\",\"Towel and water bottle\"]},{\"id\":\"147\",\"category\":\"Fitness & Recreation\",\"name\":\"Yoga Class\",\"duration_min\":60,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID\",\"Sports shoes and appropriate workout attire\",\"Medical clearance (for intensive training, if required)\",\"Towel and water bottle\"]},{\"id\":\"148\",\"category\":\"Fitness & Recreation\",\"name\":\"Personal Training\",\"duration_min\":60,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID\",\"Sports shoes and appropriate workout attire\",\"Medical clearance (for intensive training, if required)\",\"Towel and water bottle\"]},{\"id\":\"149\",\"category\":\"Fitness & Recreation\",\"name\":\"Swimming Pool Pass\",\"duration_min\":60,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID\",\"Sports shoes and appropriate workout attire\",\"Medical clearance (for intensive training, if required)\",\"Towel and water bottle\"]},{\"id\":\"150\",\"category\":\"Fitness & Recreation\",\"name\":\"Badminton Court Booking\",\"duration_min\":60,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID\",\"Sports shoes and appropriate workout attire\",\"Medical clearance (for intensive training, if required)\",\"Towel and water bottle\"]},{\"id\":\"151\",\"category\":\"Fitness & Recreation\",\"name\":\"Tennis Court Booking\",\"duration_min\":60,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID\",\"Sports shoes and appropriate workout attire\",\"Medical clearance (for intensive training, if required)\",\"Towel and water bottle\"]},{\"id\":\"152\",\"category\":\"Fitness & Recreation\",\"name\":\"Golf Tee Time\",\"duration_min\":180,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID\",\"Sports shoes and appropriate workout attire\",\"Medical clearance (for intensive training, if required)\",\"Towel and water bottle\"]},{\"id\":\"153\",\"category\":\"Fitness & Recreation\",\"name\":\"Cricket Ground Booking\",\"duration_min\":180,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID\",\"Sports shoes and appropriate workout attire\",\"Medical clearance (for intensive training, if required)\",\"Towel and water bottle\"]},{\"id\":\"154\",\"category\":\"Fitness & Recreation\",\"name\":\"Football Turf Booking\",\"duration_min\":90,\"requirements\":[\"Booking confirmation and Booking ID\",\"Government photo ID\",\"Sports shoes and appropriate workout attire\",\"Medical clearance (for intensive training, if required)\",\"Towel and water bottle\"]},{\"id\":\"155\",\"category\":\"Education & Training\",\"name\":\"Tutoring Session\",\"duration_min\":60,\"requirements\":[\"Government photo ID\",\"Previous certificates or transcripts\",\"Enrollment confirmation and fee receipt\",\"Laptop / notebook for sessions\",\"Required documents listed in course brochure\"]},{\"id\":\"156\",\"category\":\"Education & Training\",\"name\":\"Online Course Enrollment\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Previous certificates or transcripts\",\"Enrollment confirmation and fee receipt\",\"Laptop / notebook for sessions\",\"Required documents listed in course brochure\"]},{\"id\":\"157\",\"category\":\"Education & Training\",\"name\":\"Exam Registration\",\"duration_min\":180,\"requirements\":[\"Government photo ID\",\"Previous certificates or transcripts\",\"Enrollment confirmation and fee receipt\",\"Laptop / notebook for sessions\",\"Required documents listed in course brochure\"]},{\"id\":\"158\",\"category\":\"Education & Training\",\"name\":\"Driving Lesson\",\"duration_min\":60,\"requirements\":[\"Government photo ID\",\"Previous certificates or transcripts\",\"Enrollment confirmation and fee receipt\",\"Laptop / notebook for sessions\",\"Required documents listed in course brochure\"]},{\"id\":\"159\",\"category\":\"Education & Training\",\"name\":\"Language Class\",\"duration_min\":60,\"requirements\":[\"Government photo ID\",\"Previous certificates or transcripts\",\"Enrollment confirmation and fee receipt\",\"Laptop / notebook for sessions\",\"Required documents listed in course brochure\"]},{\"id\":\"160\",\"category\":\"Education & Training\",\"name\":\"Workshop / Seminar Seat\",\"duration_min\":180,\"requirements\":[\"Government photo ID\",\"Previous certificates or transcripts\",\"Enrollment confirmation and fee receipt\",\"Laptop / notebook for sessions\",\"Required documents listed in course brochure\"]},{\"id\":\"161\",\"category\":\"Education & Training\",\"name\":\"Career Counseling Session\",\"duration_min\":45,\"requirements\":[\"Government photo ID\",\"Previous certificates or transcripts\",\"Enrollment confirmation and fee receipt\",\"Laptop / notebook for sessions\",\"Required documents listed in course brochure\"]},{\"id\":\"162\",\"category\":\"Professional & Business\",\"name\":\"Legal Consultation\",\"duration_min\":45,\"requirements\":[\"Government photo ID\",\"Relevant contracts, tax returns, or property documents\",\"Previous consultation notes\",\"Business registration / GST documents (if applicable)\",\"List of questions prepared in advance\"]},{\"id\":\"163\",\"category\":\"Professional & Business\",\"name\":\"Tax / CA Consultation\",\"duration_min\":45,\"requirements\":[\"Government photo ID\",\"Relevant contracts, tax returns, or property documents\",\"Previous consultation notes\",\"Business registration / GST documents (if applicable)\",\"List of questions prepared in advance\"]},{\"id\":\"164\",\"category\":\"Professional & Business\",\"name\":\"Financial Advisory\",\"duration_min\":45,\"requirements\":[\"Government photo ID\",\"Relevant contracts, tax returns, or property documents\",\"Previous consultation notes\",\"Business registration / GST documents (if applicable)\",\"List of questions prepared in advance\"]},{\"id\":\"165\",\"category\":\"Professional & Business\",\"name\":\"Insurance Consultation\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Relevant contracts, tax returns, or property documents\",\"Previous consultation notes\",\"Business registration / GST documents (if applicable)\",\"List of questions prepared in advance\"]},{\"id\":\"166\",\"category\":\"Professional & Business\",\"name\":\"Real Estate Property Viewing\",\"duration_min\":60,\"requirements\":[\"Government photo ID\",\"Relevant contracts, tax returns, or property documents\",\"Previous consultation notes\",\"Business registration / GST documents (if applicable)\",\"List of questions prepared in advance\"]},{\"id\":\"167\",\"category\":\"Professional & Business\",\"name\":\"Business Meeting Room\",\"duration_min\":60,\"requirements\":[\"Government photo ID\",\"Relevant contracts, tax returns, or property documents\",\"Previous consultation notes\",\"Business registration / GST documents (if applicable)\",\"List of questions prepared in advance\"]},{\"id\":\"168\",\"category\":\"Professional & Business\",\"name\":\"Coworking Desk Booking\",\"duration_min\":480,\"requirements\":[\"Government photo ID\",\"Relevant contracts, tax returns, or property documents\",\"Previous consultation notes\",\"Business registration / GST documents (if applicable)\",\"List of questions prepared in advance\"]},{\"id\":\"169\",\"category\":\"Professional & Business\",\"name\":\"Notary / Documentation Service\",\"duration_min\":30,\"requirements\":[\"Government photo ID\",\"Relevant contracts, tax returns, or property documents\",\"Previous consultation notes\",\"Business registration / GST documents (if applicable)\",\"List of questions prepared in advance\"]},{\"id\":\"170\",\"category\":\"Automotive Services\",\"name\":\"Car Service / Maintenance\",\"duration_min\":120,\"requirements\":[\"Vehicle registration certificate (RC)\",\"Insurance papers\",\"Previous service records\",\"Government photo ID\",\"Keys and spare key (for long service)\"]},{\"id\":\"171\",\"category\":\"Automotive Services\",\"name\":\"Vehicle Inspection\",\"duration_min\":60,\"requirements\":[\"Vehicle registration certificate (RC)\",\"Insurance papers\",\"Previous service records\",\"Government photo ID\",\"Keys and spare key (for long service)\"]},{\"id\":\"172\",\"category\":\"Automotive Services\",\"name\":\"Tire Change Service\",\"duration_min\":45,\"requirements\":[\"Vehicle registration certificate (RC)\",\"Insurance papers\",\"Previous service records\",\"Government photo ID\",\"Keys and spare key (for long service)\"]},{\"id\":\"173\",\"category\":\"Automotive Services\",\"name\":\"Car Wash & Detailing\",\"duration_min\":60,\"requirements\":[\"Vehicle registration certificate (RC)\",\"Insurance papers\",\"Previous service records\",\"Government photo ID\",\"Keys and spare key (for long service)\"]},{\"id\":\"174\",\"category\":\"Automotive Services\",\"name\":\"Two-Wheeler Service\",\"duration_min\":90,\"requirements\":[\"Vehicle registration certificate (RC)\",\"Insurance papers\",\"Previous service records\",\"Government photo ID\",\"Keys and spare key (for long service)\"]},{\"id\":\"175\",\"category\":\"Automotive Services\",\"name\":\"EV Charging Slot Booking\",\"duration_min\":60,\"requirements\":[\"Vehicle registration certificate (RC)\",\"Insurance papers\",\"Previous service records\",\"Government photo ID\",\"Keys and spare key (for long service)\"]},{\"id\":\"176\",\"category\":\"Home Services\",\"name\":\"Plumbing Service\",\"duration_min\":60,\"requirements\":[\"Booking confirmation\",\"Access to service area (keys, gate pass)\",\"Government photo ID for verification\",\"Previous repair invoices (if follow-up)\",\"Photos of issue (for remote diagnosis)\"]},{\"id\":\"177\",\"category\":\"Home Services\",\"name\":\"Electrical Service\",\"duration_min\":60,\"requirements\":[\"Booking confirmation\",\"Access to service area (keys, gate pass)\",\"Government photo ID for verification\",\"Previous repair invoices (if follow-up)\",\"Photos of issue (for remote diagnosis)\"]},{\"id\":\"178\",\"category\":\"Home Services\",\"name\":\"AC Repair Service\",\"duration_min\":90,\"requirements\":[\"Booking confirmation\",\"Access to service area (keys, gate pass)\",\"Government photo ID for verification\",\"Previous repair invoices (if follow-up)\",\"Photos of issue (for remote diagnosis)\"]},{\"id\":\"179\",\"category\":\"Home Services\",\"name\":\"Home Cleaning\",\"duration_min\":120,\"requirements\":[\"Booking confirmation\",\"Access to service area (keys, gate pass)\",\"Government photo ID for verification\",\"Previous repair invoices (if follow-up)\",\"Photos of issue (for remote diagnosis)\"]},{\"id\":\"180\",\"category\":\"Home Services\",\"name\":\"Pest Control Service\",\"duration_min\":90,\"requirements\":[\"Booking confirmation\",\"Access to service area (keys, gate pass)\",\"Government photo ID for verification\",\"Previous repair invoices (if follow-up)\",\"Photos of issue (for remote diagnosis)\"]},{\"id\":\"181\",\"category\":\"Home Services\",\"name\":\"Packers & Movers Consultation\",\"duration_min\":45,\"requirements\":[\"Booking confirmation\",\"Access to service area (keys, gate pass)\",\"Government photo ID for verification\",\"Previous repair invoices (if follow-up)\",\"Photos of issue (for remote diagnosis)\"]},{\"id\":\"182\",\"category\":\"Home Services\",\"name\":\"Interior Design Consultation\",\"duration_min\":60,\"requirements\":[\"Booking confirmation\",\"Access to service area (keys, gate pass)\",\"Government photo ID for verification\",\"Previous repair invoices (if follow-up)\",\"Photos of issue (for remote diagnosis)\"]},{\"id\":\"183\",\"category\":\"Home Services\",\"name\":\"Appliance Repair Service\",\"duration_min\":60,\"requirements\":[\"Booking confirmation\",\"Access to service area (keys, gate pass)\",\"Government photo ID for verification\",\"Previous repair invoices (if follow-up)\",\"Photos of issue (for remote diagnosis)\"]},{\"id\":\"184\",\"category\":\"Government & Official\",\"name\":\"Passport Application Slot\",\"duration_min\":60,\"requirements\":[\"Government photo ID (original + photocopy)\",\"All application forms duly filled and signed\",\"Supporting documents per official checklist\",\"Passport-size photographs (as required)\",\"Fee payment receipt / challan\"]},{\"id\":\"185\",\"category\":\"Government & Official\",\"name\":\"Visa Application Appointment\",\"duration_min\":45,\"requirements\":[\"Government photo ID (original + photocopy)\",\"All application forms duly filled and signed\",\"Supporting documents per official checklist\",\"Passport-size photographs (as required)\",\"Fee payment receipt / challan\"]},{\"id\":\"186\",\"category\":\"Government & Official\",\"name\":\"Driving License Appointment\",\"duration_min\":45,\"requirements\":[\"Government photo ID (original + photocopy)\",\"All application forms duly filled and signed\",\"Supporting documents per official checklist\",\"Passport-size photographs (as required)\",\"Fee payment receipt / challan\"]},{\"id\":\"187\",\"category\":\"Government & Official\",\"name\":\"RTO / Vehicle Registration\",\"duration_min\":60,\"requirements\":[\"Government photo ID (original + photocopy)\",\"All application forms duly filled and signed\",\"Supporting documents per official checklist\",\"Passport-size photographs (as required)\",\"Fee payment receipt / challan\"]},{\"id\":\"188\",\"category\":\"Government & Official\",\"name\":\"Court / Legal Hearing Slot\",\"duration_min\":120,\"requirements\":[\"Government photo ID (original + photocopy)\",\"All application forms duly filled and signed\",\"Supporting documents per official checklist\",\"Passport-size photographs (as required)\",\"Fee payment receipt / challan\"]}];\n\nconst TIME_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];\nconst RESTAURANT_NAME_CATEGORY = 'Food & Dining';\nconst REMINDER_HOURS = Number($env.APPOINTMENT_REMINDER_HOURS || 24);\n\nfunction needsRestaurantName(category) {\n  return category === RESTAURANT_NAME_CATEGORY;\n}\n\nfunction formatTimeAmPm(slot) {\n  const [hh, mm] = slot.split(':').map(Number);\n  const ampm = hh >= 12 ? 'PM' : 'AM';\n  const h12 = hh % 12 || 12;\n  return `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;\n}\n\nfunction formatRequirementsBlock(requirements) {\n  const list = Array.isArray(requirements) ? requirements.filter(Boolean) : [];\n  if (!list.length) return '';\n  return '\\n\\n📌 What to bring / prepare:\\n' + list.map((r) => `• ${r}`).join('\\n');\n}\n\nfunction replyPayload(message, extra = {}) {\n  return {\n    action: 'telegram_reply',\n    channel: item.channel || 'api',\n    telegram_bot_token: token,\n    telegram_chat_id: chatId,\n    telegram_text: message,\n    storage_dirty: true,\n    ...extra,\n  };\n}\n\nfunction bookPayload(booking) {\n  return {\n    action: 'book_appointment',\n    channel: item.channel || 'api',\n    telegram_bot_token: token,\n    telegram_chat_id: chatId,\n    booking,\n    reminder_hours: REMINDER_HOURS,\n    storage_dirty: true,\n  };\n}\n\nfunction getCategories() {\n  const cats = [];\n  const seen = new Set();\n  for (const s of SERVICES) {\n    const cat = s.category || 'Other';\n    if (!seen.has(cat)) {\n      seen.add(cat);\n      cats.push(cat);\n    }\n  }\n  return cats;\n}\n\nfunction categoryMenu() {\n  const cats = getCategories();\n  const lines = [\n    '📂 What would you like to book?',\n    `(${cats.length} categories · ${SERVICES.length} services)`,\n    '',\n  ];\n  cats.forEach((cat, i) => {\n    const count = SERVICES.filter((s) => s.category === cat).length;\n    lines.push(`${i + 1}. ${cat} (${count})`);\n  });\n  lines.push('');\n  lines.push('Reply with category number or name (e.g. \"Movies\" or \"Bus Ticket\").');\n  lines.push('Type /cancel anytime to restart.');\n  return lines.join('\\n');\n}\n\nfunction parseCategory(input) {\n  const t = String(input || '').trim().toLowerCase();\n  if (!t) return null;\n  const cats = getCategories();\n  const num = Number(t);\n  if (Number.isInteger(num) && num >= 1 && num <= cats.length) return cats[num - 1];\n  const exact = cats.find((c) => c.toLowerCase() === t);\n  if (exact) return exact;\n  const partial = cats.filter((c) => {\n    const cl = c.toLowerCase();\n    return cl.includes(t) || t.includes(cl);\n  });\n  if (partial.length === 1) return partial[0];\n  const keywordMatches = cats.filter((c) =>\n    SERVICES.some((s) => s.category === c && s.name.toLowerCase().includes(t))\n  );\n  if (keywordMatches.length === 1) return keywordMatches[0];\n  return null;\n}\n\nfunction serviceMenuForCategory(category) {\n  const items = SERVICES.filter((s) => s.category === category);\n  const lines = [`📋 ${category}`, '', 'Reply with service number or name.', 'Type \"back\" for categories.', ''];\n  for (const s of items) {\n    lines.push(`${s.id}. ${s.name} (${s.duration_min} min)`);\n  }\n  return lines.join('\\n');\n}\n\nfunction parseService(input, categoryFilter) {\n  const raw = String(input || '').trim();\n  const t = raw.toLowerCase();\n  if (t === 'back') return { back: true };\n  const pool = categoryFilter\n    ? SERVICES.filter((s) => s.category === categoryFilter)\n    : SERVICES;\n  const byId = pool.find((s) => s.id === t || s.id === raw);\n  if (byId) return byId;\n  return pool.find((s) => {\n    const name = s.name.toLowerCase();\n    return t === name || t.includes(name) || name.includes(t);\n  }) || null;\n}\n\nfunction parseDate(input) {\n  const t = String(input || '').trim().toLowerCase();\n  if (!t) return null;\n  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(t)) {\n    const d = new Date(t + 'T12:00:00');\n    return Number.isNaN(d.getTime()) ? null : t;\n  }\n  const now = new Date();\n  const base = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);\n  if (t === 'today') return base.toISOString().slice(0, 10);\n  if (t === 'tomorrow') {\n    base.setDate(base.getDate() + 1);\n    return base.toISOString().slice(0, 10);\n  }\n  const weekdays = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];\n  for (let i = 0; i < weekdays.length; i++) {\n    if (t.includes(weekdays[i])) {\n      const target = i;\n      const cur = base.getDay();\n      let diff = (target - cur + 7) % 7;\n      if (diff === 0) diff = 7;\n      base.setDate(base.getDate() + diff);\n      return base.toISOString().slice(0, 10);\n    }\n  }\n  const parsed = new Date(t);\n  if (!Number.isNaN(parsed.getTime())) return parsed.toISOString().slice(0, 10);\n  return null;\n}\n\nfunction parseChosenTime(input, slots) {\n  const t = String(input || '').trim();\n  const lower = t.toLowerCase();\n\n  let m = t.match(/^(\\d{1,2}):(\\d{2})$/);\n  if (m) {\n    const hh = String(Number(m[1])).padStart(2, '0');\n    const slot = `${hh}:${m[2]}`;\n    if (slots.includes(slot)) return slot;\n  }\n\n  m = lower.match(/^(\\d{1,2})(?::(\\d{2}))?\\s*(a\\.?m\\.?|p\\.?m\\.?)$/);\n  if (m) {\n    let hh = Number(m[1]);\n    const mm = m[2] ? Number(m[2]) : 0;\n    const isPm = m[3].replace(/\\./g, '').startsWith('p');\n    if (isPm && hh < 12) hh += 12;\n    if (!isPm && hh === 12) hh = 0;\n    const slot = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;\n    if (slots.includes(slot)) return slot;\n  }\n\n  if (/^\\d{1,2}$/.test(t)) {\n    const num = Number(t);\n    const hourSlot = `${String(num).padStart(2, '0')}:00`;\n    if (slots.includes(hourSlot)) return hourSlot;\n    if (Number.isInteger(num) && num >= 1 && num <= slots.length) return slots[num - 1];\n  }\n\n  return null;\n}\n\nfunction getBookings() {\n  const fileAppointments = Array.isArray(item._bookings?.appointments) ? item._bookings.appointments : [];\n  const staticAppointments = Array.isArray(staticData.bookings?.appointments) ? staticData.bookings.appointments : [];\n  const byId = new Map();\n  for (const b of fileAppointments) byId.set(b.id, b);\n  for (const b of staticAppointments) byId.set(b.id, b);\n  return [...byId.values()];\n}\n\nfunction isSlotBooked(date, time) {\n  return getBookings().some((b) =>\n    b.status !== 'cancelled' && b.date === date && b.time_slot === time\n  );\n}\n\nfunction availableSlots(date) {\n  return TIME_SLOTS.filter((slot) => !isSlotBooked(date, slot));\n}\n\nfunction formatSlots(slots) {\n  if (!slots.length) return 'No slots available for this date.';\n  return slots.map((s, i) => `${i + 1}. ${s} (${formatTimeAmPm(s)})`).join('\\n');\n}\n\nfunction parseDetails(text) {\n  const raw = String(text || '').trim();\n  const lines = raw.split(/\\n+/).map((l) => l.trim()).filter(Boolean);\n  const out = { name: '', email: '', phone: '' };\n  const labelRe = /^(name|full\\s*name|email|e-?mail|phone|mobile|tel)\\s*[:=\\-–—]\\s*(.+)$/i;\n\n  for (const line of lines) {\n    const m = line.match(labelRe);\n    if (m) {\n      const key = m[1].toLowerCase().replace(/\\s+/g, '').replace(/-/g, '');\n      if (key === 'fullname' || key === 'name') out.name = m[2].trim();\n      else if (key === 'email') out.email = m[2].trim();\n      else if (key === 'phone' || key === 'mobile' || key === 'tel') out.phone = m[2].trim();\n      continue;\n    }\n\n    if (!out.email) {\n      const emailMatch = line.match(/[\\w.+-]+@[\\w.-]+\\.[A-Za-z]{2,}/);\n      if (emailMatch) {\n        out.email = emailMatch[0];\n        continue;\n      }\n    }\n\n    const phoneDigits = line.replace(/\\D/g, '');\n    if (!out.phone && phoneDigits.length >= 8 && /^[\\d\\s+().-]+$/.test(line)) {\n      out.phone = line.replace(/\\s+/g, ' ').trim();\n      continue;\n    }\n\n    if (!out.name && line.length >= 2 && !line.includes('@') && phoneDigits.length < 8) {\n      out.name = line;\n    }\n  }\n\n  if (!out.email) {\n    const emailMatch = raw.match(/[\\w.+-]+@[\\w.-]+\\.[A-Za-z]{2,}/);\n    if (emailMatch) out.email = emailMatch[0];\n  }\n  if (!out.phone) {\n    const phoneMatch = raw.match(/(\\+?\\d[\\d\\s()-]{7,}\\d)/);\n    if (phoneMatch) out.phone = phoneMatch[1].replace(/\\s+/g, ' ').trim();\n  }\n  return out;\n}\n\nfunction welcomeText() {\n  const brand = String($env.BRAND_NAME || 'our clinic').trim();\n  return [\n    `👋 Welcome to ${brand} Appointment Booking!`,\n    '',\n    'I can help you book appointments, tickets & services:',\n    '1️⃣ Category (Health, Movies, Bus, Hotel…)',\n    '2️⃣ Service / ticket type',\n    '3️⃣ Restaurant / venue (Food & Dining)',\n    '4️⃣ Preferred date',\n    '5️⃣ Time slot',\n    '6️⃣ Your contact details',\n    '',\n    'Type /book to start or /cancel to reset.',\n  ].join('\\n');\n}\n\nif (item.action === 'book' || item.direct_booking === true) {\n  const booking = {\n    id: 'apt_' + Date.now(),\n    chat_id: chatId || item.chat_id || 'api',\n    customer_name: String(item.customer_name || '').trim(),\n    customer_email: String(item.customer_email || '').trim(),\n    customer_phone: String(item.customer_phone || '').trim(),\n    service_type: String(item.service_type || '').trim(),\n    service_id: String(item.service_id || '').trim(),\n    date: String(item.date || '').trim(),\n    time_slot: String(item.time_slot || '').trim(),\n    restaurant_name: String(item.restaurant_name || '').trim() || null,\n    telegram_bot_token: String(item.telegram_bot_token || token || '').trim() || null,\n    status: 'confirmed',\n    created_at: new Date().toISOString(),\n    reminder_sent: false,\n    calendar_event_id: null,\n  };\n  const service = parseService(booking.service_type) || SERVICES.find((s) => s.id === booking.service_id);\n  if (service) {\n    booking.service_type = service.name;\n    booking.service_id = service.id;\n    booking.service_category = service.category;\n    booking.duration_min = service.duration_min;\n    booking.requirements = service.requirements || [];\n  }\n  if (!booking.customer_name || !booking.date || !booking.time_slot) {\n    throw new Error('direct_booking requires customer_name, date, and time_slot');\n  }\n  if (isSlotBooked(booking.date, booking.time_slot)) {\n    return [{ json: replyPayload(\n      `❌ Slot ${booking.date} ${booking.time_slot} is no longer available.\\n\\n${formatSlots(availableSlots(booking.date))}`,\n      { slot_available: false }\n    ) }];\n  }\n  return [{ json: bookPayload(booking) }];\n}\n\nif (!chatId && item.channel !== 'api') {\n  return [{ json: { action: 'skip', skip_reason: 'missing_chat_id' } }];\n}\n\nlet session = sessions[chatId] || { step: 'idle', updated_at: null };\n\nfunction saveSession(next) {\n  session = { ...session, ...next, updated_at: new Date().toISOString() };\n  sessions[chatId] = session;\n  staticData.sessions = sessions;\n}\n\nfunction clearSession() {\n  delete sessions[chatId];\n  session = { step: 'idle', updated_at: null };\n  staticData.sessions = sessions;\n}\n\nconst lower = text.toLowerCase();\n\nif (lower === '/cancel' || lower === 'cancel') {\n  clearSession();\n  return [{ json: replyPayload('Booking cancelled. Type /book to start a new appointment.') }];\n}\n\nif (lower === '/book' || lower === '/appointment' || lower === 'book appointment') {\n  saveSession({ step: 'select_category' });\n  return [{ json: replyPayload(categoryMenu(), { step: 'select_category' }) }];\n}\n\nif (lower === '/start' || lower === '/help') {\n  return [{ json: replyPayload(welcomeText()) }];\n}\n\nif (session.step === 'idle') {\n  return [{ json: { action: 'skip', skip_reason: 'no_active_booking_session' } }];\n}\n\nif (session.step === 'select_category') {\n  const category = parseCategory(text);\n  if (!category) {\n    return [{ json: replyPayload('Please choose a valid category:\\n\\n' + categoryMenu(), { step: 'select_category' }) }];\n  }\n  saveSession({ step: 'select_service', category_filter: category });\n  return [{ json: replyPayload(serviceMenuForCategory(category), { step: 'select_service', category }) }];\n}\n\nif (session.step === 'select_service') {\n  const service = parseService(text, session.category_filter);\n  if (service?.back) {\n    saveSession({ step: 'select_category', category_filter: null });\n    return [{ json: replyPayload(categoryMenu(), { step: 'select_category' }) }];\n  }\n  if (!service) {\n    const menu = session.category_filter\n      ? serviceMenuForCategory(session.category_filter)\n      : categoryMenu();\n    return [{ json: replyPayload('Please choose a valid service:\\n\\n' + menu, { step: 'select_service' }) }];\n  }\n  session.service_id = service.id;\n  session.service_type = service.name;\n  session.service_category = service.category;\n  session.duration_min = service.duration_min;\n  session.requirements = service.requirements || [];\n  if (needsRestaurantName(service.category)) {\n    session.step = 'select_restaurant';\n    saveSession(session);\n    return [{ json: replyPayload(\n      `✅ Service: ${service.name}${formatRequirementsBlock(service.requirements)}\\n\\n🍽️ Enter restaurant or venue name:`,\n      { step: 'select_restaurant' }\n    ) }];\n  }\n  session.step = 'select_date';\n  saveSession(session);\n  return [{ json: replyPayload(\n    `✅ Service: ${service.name}${formatRequirementsBlock(service.requirements)}\\n\\n📅 Enter your preferred date (YYYY-MM-DD, tomorrow, or next monday):`,\n    { step: 'select_date' }\n  ) }];\n}\n\nif (session.step === 'select_restaurant') {\n  const venueName = String(text || '').trim();\n  if (venueName.length < 2) {\n    return [{ json: replyPayload(\n      'Please enter a valid restaurant or venue name (at least 2 characters).',\n      { step: 'select_restaurant' }\n    ) }];\n  }\n  session.restaurant_name = venueName;\n  session.step = 'select_date';\n  saveSession(session);\n  return [{ json: replyPayload(\n    `✅ Venue: ${venueName}\\n\\n📅 Enter your preferred date (YYYY-MM-DD, tomorrow, or next monday):`,\n    { step: 'select_date' }\n  ) }];\n}\n\nif (session.step === 'select_date') {\n  const date = parseDate(text);\n  if (!date) {\n    return [{ json: replyPayload('Invalid date. Use YYYY-MM-DD, tomorrow, or next monday.', { step: 'select_date' }) }];\n  }\n  const today = new Date().toISOString().slice(0, 10);\n  if (date < today) {\n    return [{ json: replyPayload('Please choose a future date.', { step: 'select_date' }) }];\n  }\n  const slots = availableSlots(date);\n  if (!slots.length) {\n    return [{ json: replyPayload(\n      `No slots available on ${date}. Try another date (YYYY-MM-DD):`,\n      { step: 'select_date', slot_available: false }\n    ) }];\n  }\n  session.date = date;\n  session.step = 'select_time';\n  saveSession(session);\n  return [{ json: replyPayload(\n    `📅 Date: ${date}\\n\\n⏰ Available time slots:\\n${formatSlots(slots)}\\n\\nReply with a time (e.g. 10:00, 1 PM, 13, 14) or slot number.`,\n    { step: 'select_time', available_slots: slots }\n  ) }];\n}\n\nif (session.step === 'select_time') {\n  const slots = availableSlots(session.date);\n  const chosen = parseChosenTime(text, slots);\n  if (!chosen) {\n    return [{ json: replyPayload(`Pick a valid slot:\\n${formatSlots(slots)}\\n\\nUse 24h (13, 14), 12h (1 PM), HH:MM, or slot number.`, { step: 'select_time' }) }];\n  }\n  if (isSlotBooked(session.date, chosen)) {\n    const alt = availableSlots(session.date);\n    return [{ json: replyPayload(\n      `❌ ${chosen} (${formatTimeAmPm(chosen)}) is no longer available.\\n\\nOther slots:\\n${formatSlots(alt)}\\n\\nPick another time.`,\n      { step: 'select_time', slot_available: false, available_slots: alt }\n    ) }];\n  }\n  session.time_slot = chosen;\n  session.step = 'collect_details';\n  saveSession(session);\n  return [{ json: replyPayload(\n    [\n      `✅ Slot reserved: ${session.date} at ${chosen} (${formatTimeAmPm(chosen)})`,\n      '',\n      '📝 Send your contact details (one per line):',\n      'Your Name',\n      'Email: you@example.com',\n      'Phone: +1234567890',\n      '',\n      'Name on first line works, or use Name: Your Name',\n    ].join('\\n'),\n    { step: 'collect_details', slot_available: true }\n  ) }];\n}\n\nif (session.step === 'collect_details') {\n  const details = parseDetails(text);\n  if (!details.name || !details.email || !details.phone) {\n    return [{ json: replyPayload(\n      [\n        'Please provide your full name, email, and phone.',\n        '',\n        'Example (name on first line):',\n        'Your Name',\n        'Email: you@example.com',\n        'Phone: +1234567890',\n        '',\n        'Or use labels: Name: Your Name',\n      ].join('\\n'),\n      { step: 'collect_details' }\n    ) }];\n  }\n  if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(details.email)) {\n    return [{ json: replyPayload('Please provide a valid email address.', { step: 'collect_details' }) }];\n  }\n\n  const booking = {\n    id: 'apt_' + Date.now(),\n    chat_id: chatId,\n    customer_name: details.name,\n    customer_email: details.email,\n    customer_phone: details.phone,\n    service_id: session.service_id,\n    service_type: session.service_type,\n    service_category: session.service_category || null,\n    duration_min: session.duration_min,\n    requirements: session.requirements || [],\n    restaurant_name: session.restaurant_name || null,\n    date: session.date,\n    time_slot: session.time_slot,\n    telegram_bot_token: String(token || '').trim() || null,\n    status: 'confirmed',\n    created_at: new Date().toISOString(),\n    reminder_sent: false,\n    calendar_event_id: null,\n  };\n\n  if (isSlotBooked(booking.date, booking.time_slot)) {\n    session.step = 'select_time';\n    saveSession(session);\n    const alt = availableSlots(session.date);\n    return [{ json: replyPayload(\n      `Sorry, ${booking.time_slot} was just booked. Pick another slot:\\n${formatSlots(alt)}`,\n      { step: 'select_time', slot_available: false }\n    ) }];\n  }\n\n  clearSession();\n  return [{ json: bookPayload(booking) }];\n}\n\nreturn [{ json: replyPayload('Type /book to schedule an appointment or /cancel to reset.') }];"
+      }
+    },
+    {
+      "id": "b2000000-0022-4000-8000-000000000022",
+      "name": "IF Storage Dirty?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -300,
+        400
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "loose"
+          },
+          "conditions": [
+            {
+              "id": "storage-dirty",
+              "leftValue": "={{ Boolean($json.storage_dirty) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "b2000000-0023-4000-8000-000000000023",
+      "name": "Prepare Sessions File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -60,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\nconst sessions = staticData.sessions || {};\nconst content = JSON.stringify(sessions, null, 2);\n\nreturn [{\n  json: {\n    ...item,\n    sessions_file_path: '/files/appointments/sessions.json',\n  },\n  binary: {\n    data: {\n      data: Buffer.from(content, 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: 'sessions.json',\n    },\n  },\n}];"
+      }
+    },
+    {
+      "id": "b2000000-0024-4000-8000-000000000024",
+      "name": "Write Sessions File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        180,
+        300
+      ],
+      "parameters": {
+        "fileName": "={{ $json.sessions_file_path }}",
+        "dataPropertyName": "data",
+        "options": {}
+      }
+    },
+    {
+      "id": "b2000000-0031-4000-8000-000000000031",
+      "name": "Restore Session Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        180,
+        420
+      ],
+      "parameters": {
+        "jsCode": "let item = {};\ntry {\n  item = { ...$('Prepare Sessions File').first().json };\n} catch (e) {\n  item = { ...$input.first().json };\n}\nreturn [{ json: item }];"
+      }
+    },
+    {
+      "id": "b2000000-0009-4000-8000-000000000009",
+      "name": "Switch on Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        420,
+        480
+      ],
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "book",
+                    "leftValue": "={{ ($json.action || \"\").toString().trim() }}",
+                    "rightValue": "book_appointment",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "book"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "version": 2,
+                  "leftValue": "",
+                  "caseSensitive": true,
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "id": "reply",
+                    "leftValue": "={{ ($json.action || \"\").toString().trim() }}",
+                    "rightValue": "telegram_reply",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reply"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      }
+    },
+    {
+      "id": "b2000000-0010-4000-8000-000000000010",
+      "name": "Save in DB",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        360
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst booking = item.booking;\nif (!booking) throw new Error('Missing booking payload');\n\nconst staticData = $getWorkflowStaticData('global');\nstaticData.bookings = staticData.bookings || { appointments: [] };\nstaticData.calendarEvents = staticData.calendarEvents || { events: [] };\n\nstaticData.bookings.appointments = Array.isArray(staticData.bookings.appointments)\n  ? staticData.bookings.appointments\n  : [];\nstaticData.bookings.appointments.push(booking);\n\nfunction formatTimeAmPm(slot) {\n  const [hh, mm] = String(slot || '').split(':').map(Number);\n  if (Number.isNaN(hh)) return slot;\n  const ampm = hh >= 12 ? 'PM' : 'AM';\n  const h12 = hh % 12 || 12;\n  return `${h12}:${String(mm).padStart(2, '0')} ${ampm}`;\n}\n\nconst start = new Date(`${booking.date}T${booking.time_slot}:00`);\nconst end = new Date(start.getTime() + (Number(booking.duration_min || 30) * 60000));\n\nconst requirementsList = Array.isArray(booking.requirements) ? booking.requirements.filter(Boolean) : [];\nconst requirementsText = requirementsList.length\n  ? ['What to bring:', ...requirementsList.map((r) => `- ${r}`)].join('\\n')\n  : '';\n\nconst calendarDescription = [\n  `Service: ${booking.service_type}`,\n  booking.restaurant_name ? `Venue: ${booking.restaurant_name}` : null,\n  `Customer: ${booking.customer_name}`,\n  `Email: ${booking.customer_email}`,\n  `Phone: ${booking.customer_phone}`,\n  `Booking ID: ${booking.id}`,\n  requirementsText || null,\n].filter(Boolean);\n\nconst calendarEvent = {\n  id: booking.id,\n  summary: booking.restaurant_name\n    ? `${booking.service_type} @ ${booking.restaurant_name} — ${booking.customer_name}`\n    : `${booking.service_type} — ${booking.customer_name}`,\n  description: calendarDescription.join('\\n'),\n  start: start.toISOString(),\n  end: end.toISOString(),\n  attendee_email: booking.customer_email,\n  created_at: new Date().toISOString(),\n};\n\nstaticData.calendarEvents.events = Array.isArray(staticData.calendarEvents.events)\n  ? staticData.calendarEvents.events\n  : [];\nstaticData.calendarEvents.events.push(calendarEvent);\n\nbooking.calendar_event_id = calendarEvent.id;\nbooking.appointment_start = calendarEvent.start;\nbooking.appointment_end = calendarEvent.end;\n\nconst confirmLines = [\n  '✅ Appointment Confirmed!',\n  '',\n  `📋 Service: ${booking.service_type}`,\n];\nif (booking.restaurant_name) confirmLines.push(`🍽️ Venue: ${booking.restaurant_name}`);\nconfirmLines.push(\n  `📅 Date: ${booking.date}`,\n  `⏰ Time: ${booking.time_slot} (${formatTimeAmPm(booking.time_slot)})`,\n  `👤 Name: ${booking.customer_name}`,\n  `📧 Email: ${booking.customer_email}`,\n  `📞 Phone: ${booking.customer_phone}`,\n  `🆔 Booking ID: ${booking.id}`,\n);\nif (requirementsList.length) {\n  confirmLines.push('', '📌 What to bring / prepare:');\n  for (const req of requirementsList) confirmLines.push(`• ${req}`);\n}\nconfirmLines.push(\n  '',\n  `You will receive a reminder ${item.reminder_hours || 24} hours before your appointment.`,\n);\nif (booking.customer_email && String($env.SMTP_USER || '').trim() && String($env.SMTP_PASS || '')) {\n  confirmLines.push(`📧 A confirmation email will be sent to ${booking.customer_email}.`);\n}\nconfirmLines.push('', 'Type /book to schedule another appointment.');\nconst confirmText = confirmLines.join('\\n');\n\nconst brand = String($env.BRAND_NAME || 'Appointment Booking').trim();\nconst emailSubject = `Appointment Confirmed — ${booking.service_type} on ${booking.date}`;\nconst reqHtml = requirementsList.length\n  ? `<h3 style=\"margin:20px 0 8px;color:#333;\">What to bring / prepare</h3><ul style=\"margin:0;padding-left:20px;color:#444;\">${requirementsList.map((r) => `<li style=\"margin-bottom:6px;\">${r}</li>`).join('')}</ul>`\n  : '';\nconst emailHtml = [\n  '<div style=\"font-family:Arial,sans-serif;max-width:600px;margin:0 auto;color:#333;\">',\n  `<h2 style=\"color:#1a7f37;\">✅ Appointment Confirmed</h2>`,\n  `<p>Hi ${booking.customer_name},</p>`,\n  `<p>Your appointment has been confirmed. Details are below.</p>`,\n  '<table style=\"width:100%;border-collapse:collapse;margin:16px 0;\">',\n  `<tr><td style=\"padding:8px 0;color:#666;\">Service</td><td style=\"padding:8px 0;\"><strong>${booking.service_type}</strong></td></tr>`,\n  booking.restaurant_name ? `<tr><td style=\"padding:8px 0;color:#666;\">Venue</td><td style=\"padding:8px 0;\"><strong>${booking.restaurant_name}</strong></td></tr>` : '',\n  `<tr><td style=\"padding:8px 0;color:#666;\">Date</td><td style=\"padding:8px 0;\"><strong>${booking.date}</strong></td></tr>`,\n  `<tr><td style=\"padding:8px 0;color:#666;\">Time</td><td style=\"padding:8px 0;\"><strong>${booking.time_slot} (${formatTimeAmPm(booking.time_slot)})</strong></td></tr>`,\n  `<tr><td style=\"padding:8px 0;color:#666;\">Booking ID</td><td style=\"padding:8px 0;\"><strong>${booking.id}</strong></td></tr>`,\n  `<tr><td style=\"padding:8px 0;color:#666;\">Phone</td><td style=\"padding:8px 0;\"><strong>${booking.customer_phone}</strong></td></tr>`,\n  '</table>',\n  reqHtml,\n  `<p style=\"color:#666;font-size:14px;\">You will receive a reminder ${item.reminder_hours || 24} hours before your appointment.</p>`,\n  `<p style=\"color:#999;font-size:12px;\">— ${brand}</p>`,\n  '</div>',\n].join('');\n\nconst telegramBotToken = String(item.telegram_bot_token || $env.TELEGRAM_BOT_TOKEN || '').trim();\nconst telegramChatId = String(\n  item.telegram_chat_id || item.chat_id || booking.chat_id || ''\n).trim();\n\nreturn [{\n  json: {\n    ...item,\n    booking,\n    calendar_event: calendarEvent,\n    calendar_event_id: calendarEvent.id,\n    calendar_note: 'Calendar event saved. Connect Google Calendar node here for live sync.',\n    telegram_bot_token: telegramBotToken,\n    telegram_chat_id: telegramChatId,\n    telegram_text: confirmText,\n    recipient_email: booking.customer_email,\n    sender_email: String($env.EMAIL_FROM || $env.SMTP_USER || '').trim(),\n    smtp_host: String($env.SMTP_HOST || 'smtpout.secureserver.net').trim(),\n    smtp_port: Number($env.SMTP_PORT || 465),\n    smtp_user: String($env.SMTP_USER || '').trim(),\n    smtp_pass: String($env.SMTP_PASS || ''),\n    email_subject: emailSubject,\n    email_html: emailHtml,\n    booking_saved: true,\n    storage_dirty: true,\n  },\n}];"
+      }
+    },
+    {
+      "id": "b2000000-0025-4000-8000-000000000025",
+      "name": "Prepare Bookings File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\nconst bookings = staticData.bookings || { appointments: [] };\nconst content = JSON.stringify(bookings, null, 2);\n\nreturn [{\n  json: {\n    ...item,\n    bookings_file_path: '/files/appointments/bookings.json',\n  },\n  binary: {\n    data: {\n      data: Buffer.from(content, 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: 'bookings.json',\n    },\n  },\n}];"
+      }
+    },
+    {
+      "id": "b2000000-0026-4000-8000-000000000026",
+      "name": "Write Bookings File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        900,
+        300
+      ],
+      "parameters": {
+        "fileName": "={{ $json.bookings_file_path }}",
+        "dataPropertyName": "data",
+        "options": {}
+      }
+    },
+    {
+      "id": "b2000000-0027-4000-8000-000000000027",
+      "name": "Prepare Calendar File",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1140,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\nconst calendarEvents = staticData.calendarEvents || { events: [] };\nconst content = JSON.stringify(calendarEvents, null, 2);\n\nreturn [{\n  json: {\n    ...item,\n    calendar_file_path: '/files/appointments/calendar-events.json',\n  },\n  binary: {\n    data: {\n      data: Buffer.from(content, 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: 'calendar-events.json',\n    },\n  },\n}];"
+      }
+    },
+    {
+      "id": "b2000000-0028-4000-8000-000000000028",
+      "name": "Write Calendar File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        1380,
+        300
+      ],
+      "parameters": {
+        "fileName": "={{ $json.calendar_file_path }}",
+        "dataPropertyName": "data",
+        "options": {}
+      }
+    },
+    {
+      "id": "b2000000-0032-4000-8000-000000000032",
+      "name": "Send Confirmation Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        480
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst host = String(item.smtp_host || 'smtpout.secureserver.net').trim();\nconst port = Number(item.smtp_port || 465);\nconst user = String(item.smtp_user || item.sender_email || '').trim();\nconst pass = String(item.smtp_pass || '').trim();\nconst from = String(item.sender_email || user).trim();\nconst to = String(item.recipient_email || '').trim();\nconst subject = String(item.email_subject || 'Appointment Confirmation').trim();\nconst html = String(item.email_html || '').trim();\n\nif (!to) {\n  return [{ json: { ...item, email_sent: false, email_error: 'Missing recipient email' } }];\n}\nif (!user || !pass) {\n  return [{\n    json: {\n      ...item,\n      email_sent: false,\n      email_error: 'SMTP not configured. Add SMTP_USER, SMTP_PASS, EMAIL_FROM to .env and restart n8n.',\n    },\n  }];\n}\nif (!html) {\n  return [{ json: { ...item, email_sent: false, email_error: 'Missing email_html content' } }];\n}\n\nlet nodemailer;\ntry {\n  nodemailer = require('nodemailer');\n} catch (e) {\n  return [{\n    json: {\n      ...item,\n      email_sent: false,\n      email_error: 'nodemailer not available. Ensure NODE_FUNCTION_ALLOW_EXTERNAL=nodemailer in docker-compose.',\n    },\n  }];\n}\n\nconst transporter = nodemailer.createTransport({\n  host,\n  port,\n  secure: port === 465,\n  auth: { user, pass },\n});\n\ntry {\n  const info = await transporter.sendMail({ from, to, subject, html });\n  return [{\n    json: {\n      ...item,\n      email_sent: true,\n      email_to: to,\n      email_from: from,\n      email_message_id: info.messageId || null,\n      email_error: null,\n    },\n  }];\n} catch (err) {\n  return [{\n    json: {\n      ...item,\n      email_sent: false,\n      email_error: String(err.message || err),\n    },\n  }];\n}"
+      }
+    },
+    {
+      "id": "b2000000-0012-4000-8000-000000000012",
+      "name": "Send Confirmation",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        900,
+        480
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst token = String(item.telegram_bot_token || $env.TELEGRAM_BOT_TOKEN || '').trim();\nconst chatId = String(\n  item.telegram_chat_id\n  || item.chat_id\n  || item.booking?.chat_id\n  || $env.TELEGRAM_CHAT_ID\n  || ''\n).trim();\nconst text = String(item.telegram_text || '').trim();\n\nif (!token || !chatId) {\n  return [{\n    json: {\n      ...item,\n      telegram_sent: false,\n      telegram_error: 'Missing telegram_bot_token or telegram_chat_id',\n    },\n  }];\n}\nif (!text) {\n  return [{ json: { ...item, telegram_sent: false, telegram_error: 'Empty telegram message text' } }];\n}\n\ntry {\n  await this.helpers.httpRequest({\n    method: 'POST',\n    url: `https://api.telegram.org/bot${token}/sendMessage`,\n    body: { chat_id: chatId, text: text.slice(0, 4000) },\n    json: true,\n    timeout: 30000,\n  });\n  return [{ json: { ...item, telegram_sent: true, telegram_error: null } }];\n} catch (err) {\n  return [{\n    json: {\n      ...item,\n      telegram_sent: false,\n      telegram_error: String(err.message || err),\n    },\n  }];\n}"
+      }
+    },
+    {
+      "id": "b2000000-0013-4000-8000-000000000013",
+      "name": "Send Telegram Reply",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        420,
+        560
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst token = String(item.telegram_bot_token || $env.TELEGRAM_BOT_TOKEN || '').trim();\nconst chatId = String(\n  item.telegram_chat_id\n  || item.chat_id\n  || item.booking?.chat_id\n  || $env.TELEGRAM_CHAT_ID\n  || ''\n).trim();\nconst text = String(item.telegram_text || '').trim();\n\nif (!token || !chatId) {\n  return [{\n    json: {\n      ...item,\n      telegram_sent: false,\n      telegram_error: 'Missing telegram_bot_token or telegram_chat_id',\n    },\n  }];\n}\nif (!text) {\n  return [{ json: { ...item, telegram_sent: false, telegram_error: 'Empty telegram message text' } }];\n}\n\ntry {\n  await this.helpers.httpRequest({\n    method: 'POST',\n    url: `https://api.telegram.org/bot${token}/sendMessage`,\n    body: { chat_id: chatId, text: text.slice(0, 4000) },\n    json: true,\n    timeout: 30000,\n  });\n  return [{ json: { ...item, telegram_sent: true, telegram_error: null } }];\n} catch (err) {\n  return [{\n    json: {\n      ...item,\n      telegram_sent: false,\n      telegram_error: String(err.message || err),\n    },\n  }];\n}"
+      }
+    },
+    {
+      "id": "b2000000-0014-4000-8000-000000000014",
+      "name": "Return Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100,
+        480
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nreturn [{\n  json: {\n    success: true,\n    action: item.action || 'completed',\n    channel: item.channel || 'api',\n    step: item.step || null,\n    slot_available: item.slot_available ?? null,\n    booking: item.booking || null,\n    booking_saved: item.booking_saved === true,\n    calendar_event: item.calendar_event || null,\n    notifications: {\n      telegram_sent: item.telegram_sent === true,\n      telegram_error: item.telegram_error || null,\n      email_sent: item.email_sent === true,\n      email_to: item.email_to || item.recipient_email || null,\n      email_error: item.email_error || null,\n    },\n    telegram_text: item.telegram_text || null,\n    skipped: item.action === 'skip',\n    skip_reason: item.skip_reason || null,\n    completed_at: new Date().toISOString(),\n  },\n}];"
+      }
+    },
+    {
+      "id": "b2000000-0015-4000-8000-000000000015",
+      "name": "Reminder Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1500,
+        900
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "b2000000-0016-4000-8000-000000000016",
+      "name": "Check Upcoming Reminders",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1260,
+        900
+      ],
+      "parameters": {
+        "jsCode": "const staticData = $getWorkflowStaticData('global');\nconst REMINDER_HOURS = Number($env.APPOINTMENT_REMINDER_HOURS || 24);\nconst defaultToken = String($env.TELEGRAM_BOT_TOKEN || '').trim();\n\nstaticData.bookings = staticData.bookings || { appointments: [] };\nconst appointments = Array.isArray(staticData.bookings.appointments) ? staticData.bookings.appointments : [];\n\nconst now = Date.now();\nconst windowMs = REMINDER_HOURS * 60 * 60 * 1000;\nconst due = [];\n\nfor (const apt of appointments) {\n  if (apt.status === 'cancelled' || apt.reminder_sent) continue;\n  const start = new Date(`${apt.date}T${apt.time_slot}:00`).getTime();\n  const diff = start - now;\n  if (diff > 0 && diff <= windowMs) due.push(apt);\n}\n\nif (!due.length) {\n  return [{ json: { action: 'no_reminders', reminders_due: 0 } }];\n}\n\nreturn due.map((apt) => ({\n  json: {\n    action: 'send_reminder',\n    telegram_bot_token: String(apt.telegram_bot_token || defaultToken || '').trim(),\n    telegram_chat_id: String(apt.chat_id || ''),\n    appointment: apt,\n    telegram_text: [\n      '⏰ Appointment Reminder',\n      '',\n      `Your ${apt.service_type} is coming up:`,\n      `📅 ${apt.date} at ${apt.time_slot}`,\n      `🆔 Booking ID: ${apt.id}`,\n      '',\n      'Reply /book to reschedule or contact us if you need to cancel.',\n    ].join('\\n'),\n  },\n}));"
+      }
+    },
+    {
+      "id": "b2000000-0017-4000-8000-000000000017",
+      "name": "IF Reminders Due?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -1020,
+        900
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "version": 2,
+            "leftValue": "",
+            "caseSensitive": true,
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-reminders",
+              "leftValue": "={{ ($json.action || \"\").toString() }}",
+              "rightValue": "send_reminder",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "b2000000-0018-4000-8000-000000000018",
+      "name": "Send Reminder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -780,
+        820
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst token = String(item.telegram_bot_token || $env.TELEGRAM_BOT_TOKEN || '').trim();\nconst chatId = String(\n  item.telegram_chat_id\n  || item.chat_id\n  || item.booking?.chat_id\n  || $env.TELEGRAM_CHAT_ID\n  || ''\n).trim();\nconst text = String(item.telegram_text || '').trim();\n\nif (!token || !chatId) {\n  return [{\n    json: {\n      ...item,\n      telegram_sent: false,\n      telegram_error: 'Missing telegram_bot_token or telegram_chat_id',\n    },\n  }];\n}\nif (!text) {\n  return [{ json: { ...item, telegram_sent: false, telegram_error: 'Empty telegram message text' } }];\n}\n\ntry {\n  await this.helpers.httpRequest({\n    method: 'POST',\n    url: `https://api.telegram.org/bot${token}/sendMessage`,\n    body: { chat_id: chatId, text: text.slice(0, 4000) },\n    json: true,\n    timeout: 30000,\n  });\n  return [{ json: { ...item, telegram_sent: true, telegram_error: null } }];\n} catch (err) {\n  return [{\n    json: {\n      ...item,\n      telegram_sent: false,\n      telegram_error: String(err.message || err),\n    },\n  }];\n}"
+      }
+    },
+    {
+      "id": "b2000000-0019-4000-8000-000000000019",
+      "name": "Mark Reminder Sent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -540,
+        820
+      ],
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst staticData = $getWorkflowStaticData('global');\nstaticData.bookings = staticData.bookings || { appointments: [] };\n\nconst sentIds = new Set(\n  items\n    .filter((i) => i.json.telegram_sent === true && i.json.appointment?.id)\n    .map((i) => i.json.appointment.id)\n);\n\nfor (const apt of staticData.bookings.appointments || []) {\n  if (sentIds.has(apt.id)) apt.reminder_sent = true;\n}\n\nreturn [{\n  json: {\n    success: true,\n    reminders_sent: sentIds.size,\n    storage_dirty: sentIds.size > 0,\n    completed_at: new Date().toISOString(),\n  },\n}];"
+      }
+    },
+    {
+      "id": "b2000000-0029-4000-8000-000000000029",
+      "name": "Prepare Bookings File (Reminder)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        820
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst staticData = $getWorkflowStaticData('global');\nconst bookings = staticData.bookings || { appointments: [] };\nconst content = JSON.stringify(bookings, null, 2);\n\nreturn [{\n  json: {\n    ...item,\n    bookings_file_path: '/files/appointments/bookings.json',\n  },\n  binary: {\n    data: {\n      data: Buffer.from(content, 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: 'bookings.json',\n    },\n  },\n}];"
+      }
+    },
+    {
+      "id": "b2000000-0030-4000-8000-000000000030",
+      "name": "Write Bookings File (Reminder)",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        -60,
+        820
+      ],
+      "parameters": {
+        "fileName": "={{ $json.bookings_file_path }}",
+        "dataPropertyName": "data",
+        "options": {}
+      }
+    },
+    {
+      "id": "b2000000-0020-4000-8000-000000000020",
+      "name": "Return Reminder Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        180,
+        820
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nreturn [{\n  json: {\n    success: true,\n    action: item.action || 'completed',\n    channel: item.channel || 'api',\n    step: item.step || null,\n    slot_available: item.slot_available ?? null,\n    booking: item.booking || null,\n    booking_saved: item.booking_saved === true,\n    calendar_event: item.calendar_event || null,\n    notifications: {\n      telegram_sent: item.telegram_sent === true,\n      telegram_error: item.telegram_error || null,\n      email_sent: item.email_sent === true,\n      email_to: item.email_to || item.recipient_email || null,\n      email_error: item.email_error || null,\n    },\n    telegram_text: item.telegram_text || null,\n    skipped: item.action === 'skip',\n    skip_reason: item.skip_reason || null,\n    completed_at: new Date().toISOString(),\n  },\n}];"
+      }
+    },
+    {
+      "id": "b2000000-0021-4000-8000-000000000021",
+      "name": "Note: Workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1520,
+        -80
+      ],
+      "parameters": {
+        "width": 540,
+        "height": 300,
+        "content": "## Appointment Booking Agent\n\n**Flow:** Category → Service → (Venue) → Date → Time → Details → Book → Email + Telegram Confirm → Reminder\n\n**Catalog:** `scripts/appointment-services.js` + requirements in `scripts/appointment-requirements.js`\n\n**Email:** SMTP via `.env` (SMTP_USER, SMTP_PASS, EMAIL_FROM) — sent to customer email on booking\n\n**Telegram:** `/book` to start, `/cancel` to reset, `back` to change category\n\n**Webhooks:**\n- `POST /webhook/appointment-booking-agent-telegram`\n- `POST /webhook/appointment-booking-agent`"
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Webhook": {
+      "main": [
+        [
+          {
+            "node": "Adapt Telegram Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Adapt Telegram Payload": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set: Sample Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Sample Payload": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Triggers": {
+      "main": [
+        [
+          {
+            "node": "Normalize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Input": {
+      "main": [
+        [
+          {
+            "node": "Process Booking Conversation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Booking Conversation": {
+      "main": [
+        [
+          {
+            "node": "IF Storage Dirty?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Storage Dirty?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Sessions File",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch on Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Sessions File": {
+      "main": [
+        [
+          {
+            "node": "Write Sessions File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Sessions File": {
+      "main": [
+        [
+          {
+            "node": "Restore Session Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restore Session Context": {
+      "main": [
+        [
+          {
+            "node": "Switch on Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch on Action": {
+      "main": [
+        [
+          {
+            "node": "Save in DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save in DB": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation Email",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Bookings File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Bookings File": {
+      "main": [
+        [
+          {
+            "node": "Write Bookings File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Bookings File": {
+      "main": [
+        [
+          {
+            "node": "Prepare Calendar File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Calendar File": {
+      "main": [
+        [
+          {
+            "node": "Write Calendar File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Confirmation Email": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Telegram Reply": {
+      "main": [
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reminder Schedule": {
+      "main": [
+        [
+          {
+            "node": "Check Upcoming Reminders",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Upcoming Reminders": {
+      "main": [
+        [
+          {
+            "node": "IF Reminders Due?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF Reminders Due?": {
+      "main": [
+        [
+          {
+            "node": "Send Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Reminder Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reminder": {
+      "main": [
+        [
+          {
+            "node": "Mark Reminder Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Reminder Sent": {
+      "main": [
+        [
+          {
+            "node": "Prepare Bookings File (Reminder)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Bookings File (Reminder)": {
+      "main": [
+        [
+          {
+            "node": "Write Bookings File (Reminder)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Bookings File (Reminder)": {
+      "main": [
+        [
+          {
+            "node": "Return Reminder Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "appointment"
+    },
+    {
+      "name": "telegram"
+    },
+    {
+      "name": "booking"
+    }
+  ]
+}

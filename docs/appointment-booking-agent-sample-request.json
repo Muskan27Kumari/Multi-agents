@@ -1,0 +1,11 @@
+{
+  "action": "book",
+  "direct_booking": true,
+  "customer_name": "Jane Doe",
+  "customer_email": "jane@example.com",
+  "customer_phone": "+15551234567",
+  "service_type": "General Consultation",
+  "date": "2026-06-15",
+  "time_slot": "10:00",
+  "chat_id": "api-demo"
+}

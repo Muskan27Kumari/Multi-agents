@@ -1,0 +1,529 @@
+{
+  "name": "Marketing Content Agent",
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0001-4000-8000-000000000001",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -880,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "marketing-content",
+        "responseMode": "responseNode",
+        "options": {
+          "responseNode": "Respond to Client"
+        }
+      },
+      "webhookId": "marketing-content-webhook"
+    },
+    {
+      "id": "a1b2c3d4-0002-4000-8000-000000000002",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -880,
+        240
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0003-4000-8000-000000000003",
+      "name": "Set: Sample Campaign Brief",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -640,
+        240
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"campaign_name\": \"Q2 Product Launch\",\n  \"topic\": \"How n8n AI agents automate marketing content creation\",\n  \"audience\": \"marketing managers at B2B SaaS companies\",\n  \"tone\": \"professional yet approachable\",\n  \"platforms\": [\"blog\", \"linkedin\", \"twitter\", \"email\"],\n  \"keywords\": [\"n8n\", \"marketing automation\", \"AI content agent\"],\n  \"call_to_action\": \"Start your free trial\",\n  \"goal\": \"drive signups for our automation platform\",\n  \"context\": \"We help marketing teams generate blog, social, and email content in one workflow.\",\n  \"recipient_email\": \"\",\n  \"openrouter_api_key\": \"PASTE_YOUR_OPENROUTER_KEY_HERE\",\n  \"openrouter_model\": \"openai/gpt-4o-mini\"\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0004-4000-8000-000000000004",
+      "name": "Merge Triggers",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -400,
+        120
+      ],
+      "parameters": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0005-4000-8000-000000000005",
+      "name": "Set Campaign Brief",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -160,
+        120
+      ],
+      "parameters": {
+        "mode": "manual",
+        "duplicateItem": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "brief-campaign-name",
+              "name": "campaign_name",
+              "value": "={{ ($json.body?.campaign_name || $json.campaign_name || 'Campaign').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "brief-topic",
+              "name": "topic",
+              "value": "={{ ($json.body?.topic || $json.topic || '').trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "brief-audience",
+              "name": "audience",
+              "value": "={{ $json.body?.audience || $json.audience || 'business professionals' }}",
+              "type": "string"
+            },
+            {
+              "id": "brief-tone",
+              "name": "tone",
+              "value": "={{ $json.body?.tone || $json.tone || 'professional' }}",
+              "type": "string"
+            },
+            {
+              "id": "brief-platforms",
+              "name": "platforms",
+              "value": "={{ $json.body?.platforms || $json.platforms || ['blog', 'linkedin', 'twitter', 'email'] }}",
+              "type": "array"
+            },
+            {
+              "id": "brief-keywords",
+              "name": "keywords",
+              "value": "={{ $json.body?.keywords || $json.keywords || [] }}",
+              "type": "array"
+            },
+            {
+              "id": "brief-cta",
+              "name": "call_to_action",
+              "value": "={{ $json.body?.call_to_action || $json.call_to_action || 'Learn more' }}",
+              "type": "string"
+            },
+            {
+              "id": "brief-goal",
+              "name": "goal",
+              "value": "={{ $json.body?.goal || $json.goal || 'drive awareness and engagement' }}",
+              "type": "string"
+            },
+            {
+              "id": "brief-context",
+              "name": "context",
+              "value": "={{ $json.body?.context || $json.context || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "brief-recipient",
+              "name": "recipient_email",
+              "value": "={{ $json.body?.recipient_email || $json.recipient_email || 'information@variphi.com' }}",
+              "type": "string"
+            },
+            {
+              "id": "brief-sender",
+              "name": "sender_email",
+              "value": "={{ $json.body?.sender_email || $json.sender_email || 'information@variphi.com' }}",
+              "type": "string"
+            },
+            {
+              "id": "brief-brand",
+              "name": "brand_name",
+              "value": "={{ $json.body?.brand_name || $json.brand_name || 'Your Brand' }}",
+              "type": "string"
+            },
+            {
+              "id": "brief-brand-website",
+              "name": "brand_website",
+              "value": "={{ $json.body?.brand_website || $json.brand_website || 'https://n8n.io' }}",
+              "type": "string"
+            },
+            {
+              "id": "brief-openai-api-key",
+              "name": "openai_api_key",
+              "value": "={{ ($json.body?.openai_api_key || $json.openai_api_key || $env.OPENAI_API_KEY || $json.body?.openrouter_api_key || $json.openrouter_api_key || $env.OPENROUTER_API_KEY || '').toString().trim().replace(/^Bearer\\s+/i, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "brief-openai-model",
+              "name": "openai_model",
+              "value": "={{ $json.body?.openai_model || $json.openai_model || $env.OPENAI_MODEL || $json.body?.openrouter_model || $json.openrouter_model || 'gpt-4o-mini' }}",
+              "type": "string"
+            },
+            {
+              "id": "brief-notify-email",
+              "name": "notify_email",
+              "value": "={{ Boolean($json.body?.notify_email ?? $json.notify_email ?? false) }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-4000-8000-000000000006",
+      "name": "OpenRouter AI",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        120
+      ],
+      "parameters": {
+        "jsCode": "const brief = $input.first().json;\nconst httpRequest = this.helpers.httpRequest.bind(this.helpers);\n\nfunction cleanKey(key) {\n  return String(key || '').trim().replace(/^Bearer\\s+/i, '');\n}\n\nfunction isOpenRouterKey(key) {\n  return /^sk-or-/i.test(cleanKey(key));\n}\n\nfunction chatCompletionsUrl(apiKey) {\n  return isOpenRouterKey(apiKey)\n    ? 'https://openrouter.ai/api/v1/chat/completions'\n    : 'https://api.openai.com/v1/chat/completions';\n}\n\nfunction chatHeaders(apiKey) {\n  const headers = {\n    Authorization: `Bearer ${apiKey}`,\n    'Content-Type': 'application/json',\n  };\n  if (isOpenRouterKey(apiKey)) {\n    headers['HTTP-Referer'] = brief.brand_website || 'https://n8n.io';\n    headers['X-Title'] = 'Marketing Content Agent';\n  }\n  return headers;\n}\n\nfunction normalizeModel(model, apiKey) {\n  const m = String(model || 'gpt-4o-mini').trim();\n  if (isOpenRouterKey(apiKey)) {\n    return m.includes('/') ? m : `openai/${m.replace(/^openai\\//, '')}`;\n  }\n  return m.replace(/^openai\\//, '');\n}\n\nlet apiKey = cleanKey(brief.openai_api_key || brief.openrouter_api_key);\n\nif (!apiKey || apiKey === 'PASTE_YOUR_OPENROUTER_KEY_HERE') {\n  try {\n    const cred = await this.getCredentials('httpHeaderAuth');\n    const raw = String(cred.value || cred.headerValue || '').trim();\n    apiKey = cleanKey(raw);\n  } catch (e) {\n    // credential not configured on this node\n  }\n}\n\nconst primaryModel = normalizeModel(\n  brief.openai_model || brief.openrouter_model || 'gpt-4o-mini',\n  apiKey\n);\nconst fallbackModels = [primaryModel, 'gpt-4o-mini']\n  .map((m) => normalizeModel(m, apiKey))\n  .filter((m, i, arr) => m && arr.indexOf(m) === i);\n\nfunction httpStatus(err) {\n  return err?.statusCode || err?.response?.statusCode || null;\n}\n\nfunction errDetail(err) {\n  const body = err?.response?.body;\n  if (body?.error?.message) return body.error.message;\n  if (typeof body?.error === 'string') return body.error;\n  return String(err?.message || err || 'unknown error');\n}\n\nfunction buildTemplateContent(b) {\n  const topic = String(b.topic || 'Marketing topic').trim();\n  const brand = b.brand_name || 'Your Brand';\n  const audience = b.audience || 'your audience';\n  const cta = b.call_to_action || 'Learn more';\n  const website = b.brand_website || '';\n\n  return {\n    blog: {\n      title: `${topic} — Starter Guide for ${audience}`,\n      meta_description: `Practical ideas on ${topic.toLowerCase()} for ${audience}.`,\n      body_markdown: `## Introduction\\n\\n${topic} is a strong theme for teams that want clearer messaging and better engagement.\\n\\n## Three angles to explore\\n\\n1. **Pain first** — Name the problem ${audience} feels today.\\n2. **Proof** — Share one example, lesson, or workflow ${brand} enables.\\n3. **Action** — Close with a direct CTA: **${cta}**.\\n\\n## Suggested outline\\n\\n- Hook: why this topic matters now\\n- Insight: one framework or checklist\\n- CTA: ${cta}${website ? ` (${website})` : ''}\\n\\n_This is a template draft. Configure OPENAI_API_KEY for AI-polished copy._`,\n    },\n    linkedin: {\n      post: `${topic}\\n\\nQuick framework we share with ${audience}:\\n→ Name the pain\\n→ Offer one useful insight\\n→ Invite readers to ${cta}\\n\\nWhat's your take — what would you add?\\n\\n#marketing #content #B2B`,\n      hashtags: ['#marketing', '#contentstrategy', '#B2B'],\n    },\n    twitter: {\n      thread: [\n        { tweet: 1, text: `${topic} — starter thread 🧵` },\n        { tweet: 2, text: 'Mistake: leading with product specs instead of the customer problem.' },\n        { tweet: 3, text: `Better: one insight + one example + one CTA (${cta}).` },\n      ],\n    },\n    email: {\n      subject_lines: [`Ideas: ${topic}`, `${brand} — ${topic}`],\n      preview_text: `Starter copy on ${topic}`,\n      body_html: `<p>Hi,</p><p>Here is draft messaging on <strong>${topic}</strong> for ${audience}.</p><p><a href=\"${website || '#'}\">${cta}</a></p>`,\n    },\n    review_notes: [\n      'Template draft generated without AI (API unavailable or missing key).',\n    ],\n  };\n}\n\nfunction templateResponse(b, reason) {\n  return {\n    choices: [{ message: { content: JSON.stringify(buildTemplateContent(b)) } }],\n    model: 'template_fallback',\n    _meta: {\n      template_fallback: true,\n      reason,\n    },\n  };\n}\n\nconst systemPrompt = `You are an expert marketing content strategist for ${brief.brand_name}. Brand voice: ${brief.tone || 'professional and clear'}. Website: ${brief.brand_website || ''}. Generate multi-platform marketing content as a single JSON object. Only include platforms listed in the user request. Do not invent statistics or testimonials. Return valid JSON only with this structure: { \"blog\": { \"title\": \"\", \"meta_description\": \"\", \"body_markdown\": \"\" }, \"linkedin\": { \"post\": \"\", \"hashtags\": [] }, \"twitter\": { \"thread\": [{ \"tweet\": 1, \"text\": \"\" }] }, \"email\": { \"subject_lines\": [], \"preview_text\": \"\", \"body_html\": \"\" }, \"review_notes\": [] }`;\n\nconst userPrompt = `Campaign: ${brief.campaign_name}\\nTopic: ${brief.topic}\\nAudience: ${brief.audience}\\nTone: ${brief.tone}\\nPlatforms: ${(brief.platforms || []).join(', ')}\\nKeywords: ${(brief.keywords || []).join(', ')}\\nCTA: ${brief.call_to_action}\\nGoal: ${brief.goal}\\nContext: ${brief.context}`;\n\nif (!apiKey) {\n  return [{ json: templateResponse(brief, 'OPENAI_API_KEY not configured') }];\n}\n\nconst errors = [];\nfor (const model of fallbackModels) {\n  try {\n    const response = await httpRequest({\n      method: 'POST',\n      url: chatCompletionsUrl(apiKey),\n      headers: chatHeaders(apiKey),\n      body: {\n        model,\n        temperature: 0.7,\n        response_format: { type: 'json_object' },\n        messages: [\n          { role: 'system', content: systemPrompt },\n          { role: 'user', content: userPrompt },\n        ],\n      },\n      json: true,\n      timeout: 120000,\n    });\n    return [{ json: response }];\n  } catch (error) {\n    const status = httpStatus(error);\n    const detail = errDetail(error);\n    errors.push(`${model}${status ? ` (${status})` : ''}: ${detail}`);\n    if (status === 402) break;\n  }\n}\n\nreturn [{ json: templateResponse(brief, errors.join(' | ') || 'AI request failed') }];\n"
+      },
+      "credentials": {
+        "httpHeaderAuth": {
+          "name": "OpenRouter API"
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0007-4000-8000-000000000007",
+      "name": "Extract Content",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        320,
+        120
+      ],
+      "parameters": {
+        "jsCode": "const brief = $('Set Campaign Brief').first().json;\n\nif (!brief.topic) {\n  throw new Error('Missing required field: topic. Include topic in the campaign brief or webhook body.');\n}\n\nconst response = $input.first().json;\nif (response.error) {\n  throw new Error(`OpenRouter error: ${response.error.message || JSON.stringify(response.error)}`);\n}\n\nconst raw = response.choices?.[0]?.message?.content;\nif (!raw) {\n  throw new Error('OpenRouter returned no content. Check OPENROUTER_API_KEY and model.');\n}\n\nlet content;\ntry {\n  content = typeof raw === 'string' ? JSON.parse(raw) : raw;\n} catch {\n  const match = String(raw).match(/```(?:json)?\\s*([\\s\\S]*?)```/);\n  if (!match) throw new Error('Failed to parse AI response as JSON.');\n  content = JSON.parse(match[1].trim());\n}\n\nif (!content || typeof content !== 'object') {\n  throw new Error('AI response is not a valid content object.');\n}\n\nreturn [{\n  json: {\n    ...brief,\n    content,\n    generated_at: new Date().toISOString(),\n    model: response.model || null,\n    usage: response.usage || null,\n    analysis_mode: response._meta?.template_fallback ? 'template_fallback' : 'openrouter'\n  }\n}];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0008-4000-8000-000000000008",
+      "name": "HTML Template",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        560,
+        120
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst c = item.content || {};\nconst brand = item.brand_name || 'Your Brand';\nconst esc = (s) => String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');\nconst mdToHtml = (md) => esc(md).replace(/\\n/g, '<br>');\n\nconst section = (title, body) => body ? `\n  <tr><td style=\"padding:24px 32px 8px;font-family:Arial,sans-serif;\">\n    <h2 style=\"margin:0;font-size:18px;color:#111827;\">${esc(title)}</h2>\n  </td></tr>\n  <tr><td style=\"padding:8px 32px 16px;font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#374151;\">${body}</td></tr>` : '';\n\nlet blogHtml = '';\nif (c.blog) {\n  blogHtml = `<strong>${esc(c.blog.title)}</strong><br><em>${esc(c.blog.meta_description)}</em><br><br>${mdToHtml(c.blog.body_markdown)}`;\n}\n\nlet linkedinHtml = '';\nif (c.linkedin) {\n  const tags = (c.linkedin.hashtags || []).map(h => esc(h)).join(' ');\n  linkedinHtml = `${esc(c.linkedin.post)}<br><br><span style=\"color:#2563eb;\">${tags}</span>`;\n}\n\nlet twitterHtml = '';\nif (c.twitter?.thread?.length) {\n  twitterHtml = c.twitter.thread.map(t => `<p style=\"margin:0 0 12px;\"><strong>${esc(t.tweet)}.</strong> ${esc(t.text)}</p>`).join('');\n}\n\nlet emailHtml = '';\nif (c.email) {\n  const subjects = (c.email.subject_lines || []).map(s => `<li>${esc(s)}</li>`).join('');\n  emailHtml = `<p><strong>Subject lines:</strong></p><ul>${subjects}</ul><p><strong>Preview:</strong> ${esc(c.email.preview_text)}</p><hr style=\"border:none;border-top:1px solid #e5e7eb;margin:16px 0;\">${c.email.body_html || ''}`;\n}\n\nlet notesHtml = '';\nif (c.review_notes?.length) {\n  notesHtml = `<ul style=\"margin:8px 0;padding-left:20px;color:#b45309;\">${c.review_notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>`;\n}\n\nconst email_html = `<!DOCTYPE html>\n<html>\n<head><meta charset=\"utf-8\"><title>${esc(item.campaign_name)} — Marketing Content</title></head>\n<body style=\"margin:0;padding:0;background:#f3f4f6;\">\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f3f4f6;padding:32px 16px;\">\n<tr><td align=\"center\">\n<table width=\"600\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);\">\n<tr><td style=\"background:#111827;padding:24px 32px;font-family:Arial,sans-serif;\">\n  <p style=\"margin:0 0 4px;font-size:12px;color:#9ca3af;text-transform:uppercase;letter-spacing:1px;\">${esc(brand)}</p>\n  <h1 style=\"margin:0;font-size:22px;color:#ffffff;\">${esc(item.campaign_name)}</h1>\n  <p style=\"margin:8px 0 0;font-size:14px;color:#d1d5db;\">${esc(item.topic)}</p>\n</td></tr>\n<tr><td style=\"padding:16px 32px;font-family:Arial,sans-serif;font-size:13px;color:#6b7280;\">\n  Generated ${esc(item.generated_at)} · Tone: ${esc(item.tone)} · Goal: ${esc(item.goal)}\n</td></tr>\n${section('Blog Post', blogHtml)}\n${section('LinkedIn', linkedinHtml)}\n${section('Twitter / X Thread', twitterHtml)}\n${section('Email Draft', emailHtml)}\n${notesHtml ? section('Review Notes', notesHtml) : ''}\n<tr><td style=\"padding:24px 32px;font-family:Arial,sans-serif;font-size:12px;color:#9ca3af;border-top:1px solid #e5e7eb;\">\n  CTA: ${esc(item.call_to_action)} · Sent by Marketing Content Agent (n8n)\n</td></tr>\n</table>\n</td></tr>\n</table>\n</body>\n</html>`;\n\nconst subject = `Marketing Content Ready: ${item.campaign_name || item.topic}`;\n\nreturn [{\n  json: {\n    ...item,\n    email_html,\n    email_subject: subject\n  }\n}];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0009-4000-8000-000000000009",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        800,
+        120
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "fromEmail": "={{ $json.sender_email || 'information@variphi.com' }}",
+        "toEmail": "={{ $json.recipient_email || 'information@variphi.com' }}",
+        "subject": "={{ $json.email_subject }}",
+        "emailFormat": "html",
+        "html": "={{ $json.email_html }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0010-4000-8000-000000000010",
+      "name": "Validate Campaign Brief",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        40,
+        320
+      ],
+      "parameters": {
+        "jsCode": "const brief = $input.first().json;\nif (!brief.topic || !String(brief.topic).trim()) {\n  throw new Error('Missing required field: topic');\n}\nreturn $input.all();"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0011-4000-8000-000000000011",
+      "name": "Note: Workflow",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -900,
+        -200
+      ],
+      "parameters": {
+        "width": 420,
+        "height": 200,
+        "content": "## Marketing Content Agent\n\n**OpenRouter auth (pick one):**\n1. POST body field `openrouter_api_key`\n2. Sample campaign brief node key value\n3. HTTP Header Auth credential on **OpenRouter AI** node\n\nWorkflow now auto-runs every 5 hours via **Schedule Trigger**.\n\nGenerated content is also saved to `/files/marketing-content-latest.xlsx`.\n\nCredential setup: Header name `Authorization`, value `Bearer sk-or-v1-...`\n\n**SMTP credential for Send Email node:**\nHost: `smtpout.secureserver.net`\nPort: `465`\nUser: `information@variphi.com`\nPassword: `YOUR_SMTP_PASSWORD_HERE`\nSSL/TLS: Enabled"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0012-4000-8000-000000000012",
+      "name": "Prepare Excel Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        300
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst c = item.content || {};\n\nconst thread = (c.twitter?.thread || [])\n  .map((t) => `${t.tweet}. ${t.text}`)\n  .join('\\n');\n\nreturn [{\n  json: {\n    generated_at: item.generated_at || new Date().toISOString(),\n    campaign_name: item.campaign_name || '',\n    topic: item.topic || '',\n    audience: item.audience || '',\n    tone: item.tone || '',\n    goal: item.goal || '',\n    call_to_action: item.call_to_action || '',\n    recipient_email: item.recipient_email || '',\n    model: item.model || '',\n    blog_title: c.blog?.title || '',\n    blog_meta_description: c.blog?.meta_description || '',\n    blog_body_markdown: c.blog?.body_markdown || '',\n    linkedin_post: c.linkedin?.post || '',\n    linkedin_hashtags: (c.linkedin?.hashtags || []).join(' '),\n    twitter_thread: thread,\n    email_subjects: (c.email?.subject_lines || []).join(' | '),\n    email_preview_text: c.email?.preview_text || '',\n    email_body_html: c.email?.body_html || '',\n    review_notes: (c.review_notes || []).join(' | ')\n  }\n}];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0013-4000-8000-000000000013",
+      "name": "Create Excel File",
+      "type": "n8n-nodes-base.spreadsheetFile",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        300
+      ],
+      "parameters": {
+        "operation": "toFile",
+        "fileFormat": "xlsx",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0015-4000-8000-000000000015",
+      "name": "Notify Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        800,
+        40
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.notify_email }}",
+              "value2": true
+            }
+          ],
+          "string": [
+            {
+              "value1": "={{ ($json.recipient_email || '').trim() }}",
+              "operation": "notEmpty"
+            }
+          ]
+        },
+        "combineOperation": "all"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0016-4000-8000-000000000016",
+      "name": "Respond to Client",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        1040,
+        120
+      ],
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { success: true, topic: $json.topic, campaign_name: $json.campaign_name, content: $json.content, generated_at: $json.generated_at, model: $json.model, analysis_mode: $json.analysis_mode || $json.model } }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0014-4000-8000-000000000014",
+      "name": "Save Excel File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        1280,
+        300
+      ],
+      "parameters": {
+        "fileName": "/files/marketing-content-latest.xlsx",
+        "options": {}
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set: Sample Campaign Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Sample Campaign Brief": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Triggers": {
+      "main": [
+        [
+          {
+            "node": "Set Campaign Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Campaign Brief": {
+      "main": [
+        [
+          {
+            "node": "Validate Campaign Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Campaign Brief": {
+      "main": [
+        [
+          {
+            "node": "OpenRouter AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter AI": {
+      "main": [
+        [
+          {
+            "node": "Extract Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Content": {
+      "main": [
+        [
+          {
+            "node": "HTML Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML Template": {
+      "main": [
+        [
+          {
+            "node": "Notify Email?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Excel Row",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respond to Client",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Email?": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Prepare Excel Row": {
+      "main": [
+        [
+          {
+            "node": "Create Excel File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Excel File": {
+      "main": [
+        [
+          {
+            "node": "Save Excel File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "marketing"
+    },
+    {
+      "name": "openrouter"
+    },
+    {
+      "name": "email"
+    }
+  ]
+}

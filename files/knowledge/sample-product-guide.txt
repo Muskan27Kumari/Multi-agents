@@ -1,0 +1,11 @@
+Acme Automation Platform — Product Guide
+
+Overview
+Acme Automation Platform helps teams build AI-powered workflows without writing boilerplate code.
+
+Supported Integrations
+- Email: SMTP delivery for reports and RAG answers
+- Telegram: bot notifications for alerts and Q&A responses
+- Slack: team alerts and approval flows
+- Google Sheets: export reports and audit logs
+- Webhooks: trigger workflows from any HTTP client

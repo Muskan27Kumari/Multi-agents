@@ -1,0 +1,642 @@
+{
+  "name": "Portfolio Market Report",
+  "nodes": [
+    {
+      "id": "p2000000-0001-4000-8000-000000000001",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -1280,
+        0
+      ],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "portfolio-market-report",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "webhookId": "portfolio-market-report-webhook"
+    },
+    {
+      "id": "p2000000-0002-4000-8000-000000000002",
+      "name": "Cron Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1280,
+        240
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * 1-5"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "p2000000-0003-4000-8000-000000000003",
+      "name": "Set: Sample Portfolio",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1040,
+        240
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"portfolio_name\": \"My Portfolio\",\n  \"holdings\": [\n    {\n      \"symbol\": \"AAPL\",\n      \"shares\": 10,\n      \"avg_cost\": 175.5\n    },\n    {\n      \"symbol\": \"MSFT\",\n      \"shares\": 5,\n      \"avg_cost\": 380.0\n    },\n    {\n      \"symbol\": \"NVDA\",\n      \"shares\": 3,\n      \"avg_cost\": 450.0\n    }\n  ],\n  \"batch_size\": 2,\n  \"finnhub_api_key\": \"d8c7ir1r01qidic6mr70d8c7ir1r01qidic6mr7g\",\n  \"alpha_vantage_api_key\": \"F5824HO58NAWKIYA\",\n  \"marketaux_api_key\": \"mARnGFoyhtjngy6ZOC3Tx5TFDJDxSq5NMGe4tJ3q\",\n  \"openrouter_api_key\": \"\",\n  \"openrouter_model\": \"openai/gpt-4o-mini\",\n  \"recipient_email\": \"information@variphi.com\",\n  \"sender_email\": \"information@variphi.com\",\n  \"slack_bot_token\": \"\",\n  \"slack_channel\": \"#portfolio-alerts\",\n  \"notify_email\": false,\n  \"notify_slack\": false,\n  \"telegram_bot_token\": \"8713098824:AAGNqmQPRmegju3bsLZOy99udBrcF1LZmmY\",\n  \"telegram_chat_id\": \"7887196330\",\n  \"notify_telegram\": true\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "p2000000-0004-4000-8000-000000000004",
+      "name": "Merge Triggers",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        -820,
+        120
+      ],
+      "parameters": {
+        "mode": "append"
+      }
+    },
+    {
+      "id": "p2000000-0005-4000-8000-000000000005",
+      "name": "Set Portfolio / Holdings",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -580,
+        120
+      ],
+      "parameters": {
+        "mode": "manual",
+        "assignments": {
+          "assignments": [
+            {
+              "id": "portfolio_name",
+              "name": "portfolio_name",
+              "value": "={{ ($json.body?.portfolio_name || $json.portfolio_name || 'My Portfolio').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "holdings",
+              "name": "holdings",
+              "value": "={{ $json.body?.holdings || $json.holdings || [] }}",
+              "type": "array"
+            },
+            {
+              "id": "batch_size",
+              "name": "batch_size",
+              "value": "={{ Number($json.body?.batch_size || $json.batch_size || 2) }}",
+              "type": "number"
+            },
+            {
+              "id": "finnhub_api_key",
+              "name": "finnhub_api_key",
+              "value": "={{ ($json.body?.finnhub_api_key || $json.finnhub_api_key || 'd8c7ir1r01qidic6mr70d8c7ir1r01qidic6mr7g').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "alpha_vantage_api_key",
+              "name": "alpha_vantage_api_key",
+              "value": "={{ ($json.body?.alpha_vantage_api_key || $json.alpha_vantage_api_key || 'F5824HO58NAWKIYA').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "marketaux_api_key",
+              "name": "marketaux_api_key",
+              "value": "={{ ($json.body?.marketaux_api_key || $json.marketaux_api_key || 'mARnGFoyhtjngy6ZOC3Tx5TFDJDxSq5NMGe4tJ3q').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "openai_api_key",
+              "name": "openai_api_key",
+              "value": "={{ ($json.body?.openai_api_key || $json.openai_api_key || $env.OPENAI_API_KEY || $json.body?.openrouter_api_key || $json.openrouter_api_key || $env.OPENROUTER_API_KEY || '').toString().trim().replace(/^Bearer\\s+/i, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "openai_model",
+              "name": "openai_model",
+              "value": "={{ $json.body?.openai_model || $json.openai_model || $env.OPENAI_MODEL || $json.body?.openrouter_model || $json.openrouter_model || 'gpt-4o-mini' }}",
+              "type": "string"
+            },
+            {
+              "id": "recipient_email",
+              "name": "recipient_email",
+              "value": "={{ ($json.body?.recipient_email || $json.recipient_email || 'information@variphi.com').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "sender_email",
+              "name": "sender_email",
+              "value": "={{ ($json.body?.sender_email || $json.sender_email || 'information@variphi.com').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "slack_bot_token",
+              "name": "slack_bot_token",
+              "value": "={{ ($json.body?.slack_bot_token || $json.slack_bot_token || '').toString().trim().replace(/^Bearer\\s+/i, '') }}",
+              "type": "string"
+            },
+            {
+              "id": "slack_channel",
+              "name": "slack_channel",
+              "value": "={{ $json.body?.slack_channel || $json.slack_channel || '#portfolio-alerts' }}",
+              "type": "string"
+            },
+            {
+              "id": "notify_email",
+              "name": "notify_email",
+              "value": "={{ Boolean($json.body?.notify_email ?? $json.notify_email ?? false) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "notify_slack",
+              "name": "notify_slack",
+              "value": "={{ Boolean($json.body?.notify_slack ?? $json.notify_slack ?? false) }}",
+              "type": "boolean"
+            },
+            {
+              "id": "telegram_bot_token",
+              "name": "telegram_bot_token",
+              "value": "={{ ($json.body?.telegram_bot_token || $json.telegram_bot_token || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "telegram_chat_id",
+              "name": "telegram_chat_id",
+              "value": "={{ ($json.body?.telegram_chat_id || $json.telegram_chat_id || '').toString().trim() }}",
+              "type": "string"
+            },
+            {
+              "id": "notify_telegram",
+              "name": "notify_telegram",
+              "value": "={{ Boolean($json.body?.notify_telegram ?? $json.notify_telegram ?? true) }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "p2000000-0006-4000-8000-000000000006",
+      "name": "Validate Holdings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -340,
+        120
+      ],
+      "parameters": {
+        "jsCode": "const cfg = $input.first().json;\n\nconst holdings = Array.isArray(cfg.holdings) ? cfg.holdings : [];\nif (!holdings.length) {\n  throw new Error('holdings must be a non-empty array of { symbol, shares?, avg_cost? }.');\n}\n\nconst normalized = [];\nconst seen = new Set();\n\nfor (const raw of holdings) {\n  const symbol = String(raw?.symbol || '').trim().toUpperCase();\n  if (!symbol || !/^[A-Z][A-Z0-9.-]{0,9}$/.test(symbol)) {\n    throw new Error(`Invalid symbol: ${raw?.symbol}`);\n  }\n  if (seen.has(symbol)) {\n    throw new Error(`Duplicate symbol in holdings: ${symbol}`);\n  }\n  seen.add(symbol);\n\n  const shares = Number(raw?.shares ?? 0);\n  const avgCost = Number(raw?.avg_cost ?? 0);\n\n  normalized.push({\n    symbol,\n    shares: Number.isFinite(shares) ? shares : 0,\n    avg_cost: Number.isFinite(avgCost) ? avgCost : 0,\n  });\n}\n\nif (normalized.length > 25) {\n  throw new Error('Maximum 25 holdings per run to respect API rate limits.');\n}\n\nconst keys = {\n  finnhub: String(cfg.finnhub_api_key || '').trim(),\n  alpha: String(cfg.alpha_vantage_api_key || '').trim(),\n  marketaux: String(cfg.marketaux_api_key || '').trim(),\n  openrouter: String(cfg.openrouter_api_key || '').trim(),\n};\n\nif (!keys.finnhub) throw new Error('Missing finnhub_api_key.');\nif (!keys.alpha) throw new Error('Missing alpha_vantage_api_key.');\nif (!keys.marketaux) throw new Error('Missing marketaux_api_key.');\nreturn [{\n  json: {\n    ...cfg,\n    holdings: normalized,\n    run_id: `pf_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,\n    triggered_at: new Date().toISOString(),\n  },\n}];\n"
+      }
+    },
+    {
+      "id": "p2000000-0016-4000-8000-000000000016",
+      "name": "Process All Holdings",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        120
+      ],
+      "parameters": {
+        "jsCode": "const cfg = $input.first().json;\nconst sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));\nconst httpRequest = this.helpers.httpRequest.bind(this.helpers);\n\nconst holdings = cfg.holdings || [];\nconst finnhub = String(cfg.finnhub_api_key || '').trim();\nconst alphaKey = String(cfg.alpha_vantage_api_key || '').trim();\nconst marketaux = String(cfg.marketaux_api_key || '').trim();\n\nfunction cleanKey(key) {\n  return String(key || '').trim().replace(/^Bearer\\s+/i, '');\n}\n\nfunction isOpenRouterKey(key) {\n  return /^sk-or-/i.test(cleanKey(key));\n}\n\nfunction chatCompletionsUrl(apiKey) {\n  return isOpenRouterKey(apiKey)\n    ? 'https://openrouter.ai/api/v1/chat/completions'\n    : 'https://api.openai.com/v1/chat/completions';\n}\n\nfunction chatHeaders(apiKey) {\n  const headers = {\n    Authorization: `Bearer ${apiKey}`,\n    'Content-Type': 'application/json',\n  };\n  if (isOpenRouterKey(apiKey)) headers['X-Title'] = 'Portfolio Market Report';\n  return headers;\n}\n\nfunction normalizeModel(model, apiKey) {\n  const m = String(model || 'gpt-4o-mini').trim();\n  if (isOpenRouterKey(apiKey)) {\n    return m.includes('/') ? m : `openai/${m.replace(/^openai\\//, '')}`;\n  }\n  return m.replace(/^openai\\//, '');\n}\n\nconst apiKey = cleanKey(cfg.openai_api_key || cfg.openrouter_api_key);\nconst primaryModel = normalizeModel(cfg.openai_model || cfg.openrouter_model || 'gpt-4o-mini', apiKey);\nconst fallbackModels = [primaryModel, 'gpt-4o-mini'].filter((m, i, arr) => m && arr.indexOf(m) === i);\n\nconst systemPrompt = 'You are a portfolio research analyst. Return strict JSON only with keys: signal (BUY|HOLD|SELL), confidence (0-100), summary, catalysts (array), risks (array), key_levels (object with support and resistance numbers), horizon (short|medium|long), action_note.';\nconst validSignals = new Set(['BUY', 'HOLD', 'SELL']);\nconst analyzed = [];\nconst runWarnings = [];\n\nfunction httpStatus(err) {\n  return err?.statusCode || err?.response?.statusCode || err?.cause?.statusCode || null;\n}\n\nfunction errDetail(err) {\n  const body = err?.response?.body;\n  if (body?.error?.message) return body.error.message;\n  if (typeof body?.error === 'string') return body.error;\n  return String(err?.message || err || 'unknown error');\n}\n\nfunction ruleBasedSignal(merged_data) {\n  const md = merged_data.market_data || {};\n  const pos = merged_data.position || {};\n  const fund = merged_data.fundamentals || {};\n  const change = Number(md.change_percent || 0);\n  const pnlPct = Number(pos.unrealized_pnl_percent || 0);\n  const pe = Number(fund.pe_ratio || 0);\n\n  let score = 0;\n  if (change > 1.5) score += 1;\n  else if (change < -1.5) score -= 1;\n  if (pnlPct > 15) score -= 1;\n  else if (pnlPct < -10) score += 1;\n  if (pe > 0 && pe < 25) score += 1;\n  else if (pe > 40) score -= 1;\n\n  let action = 'HOLD';\n  if (score >= 2) action = 'BUY';\n  else if (score <= -2) action = 'SELL';\n\n  const headlines = (merged_data.news_earnings?.news?.headlines || [])\n    .map((h) => h.title)\n    .filter(Boolean)\n    .slice(0, 3);\n\n  return {\n    signal: action,\n    confidence: Math.min(75, 50 + Math.abs(score) * 8),\n    summary: `Rule-based ${action}: daily move ${change.toFixed(2)}%, unrealized P&L ${pnlPct.toFixed(1)}%${pe ? `, P/E ${pe}` : ''}. AI unavailable — check OPENAI_API_KEY for full analysis.`,\n    catalysts: headlines,\n    risks: ['Rule-based signal only. Not investment advice.'],\n    key_levels: {\n      support: Number((md.low || md.price * 0.97).toFixed(2)),\n      resistance: Number((md.high || md.price * 1.03).toFixed(2)),\n    },\n    horizon: 'short',\n    action_note: action === 'BUY' ? 'Monitor for entry' : action === 'SELL' ? 'Consider trimming' : 'Hold and watch',\n    _analysis_mode: 'rule_based_fallback',\n  };\n}\n\nfor (let i = 0; i < holdings.length; i++) {\n  const holding = holdings[i];\n  const symbol = holding.symbol;\n  const shares = Number(holding.shares || 0);\n  const avgCost = Number(holding.avg_cost || 0);\n\n  if (i > 0) {\n    await sleep(13000);\n  }\n\n  let quote = {};\n  const quoteErrors = [];\n  try {\n    quote = await httpRequest({\n      method: 'GET',\n      url: 'https://finnhub.io/api/v1/quote',\n      qs: { symbol, token: finnhub },\n      json: true,\n      timeout: 30000,\n    });\n  } catch (e) {\n    quoteErrors.push(`finnhub_quote: ${e.message}`);\n  }\n\n  const price = Number(quote.c || 0);\n  if (!price) {\n    throw new Error(`Finnhub quote unavailable for ${symbol}: ${quoteErrors.join(' | ') || 'empty_quote'}`);\n  }\n\n  const market_data = {\n    symbol,\n    price,\n    open: Number(quote.o || 0),\n    high: Number(quote.h || 0),\n    low: Number(quote.l || 0),\n    previous_close: Number(quote.pc || 0),\n    change_percent: Number(quote.dp || 0),\n    vendor: 'finnhub',\n    collected_at: new Date().toISOString(),\n    errors: quoteErrors,\n  };\n\n  let fundamentalsRaw = {};\n  const fundErrors = [];\n  try {\n    fundamentalsRaw = await httpRequest({\n      method: 'GET',\n      url: 'https://www.alphavantage.co/query',\n      qs: { function: 'OVERVIEW', symbol, apikey: alphaKey },\n      json: true,\n      timeout: 30000,\n    });\n  } catch (e) {\n    fundErrors.push(`alpha_overview: ${e.message}`);\n  }\n\n  if (fundamentalsRaw?.Note || fundamentalsRaw?.Information) {\n    fundErrors.push(String(fundamentalsRaw.Note || fundamentalsRaw.Information));\n  }\n\n  const fundamentals = {\n    symbol,\n    name: fundamentalsRaw.Name || null,\n    sector: fundamentalsRaw.Sector || null,\n    industry: fundamentalsRaw.Industry || null,\n    market_cap: fundamentalsRaw.MarketCapitalization || null,\n    pe_ratio: fundamentalsRaw.PERatio || null,\n    eps: fundamentalsRaw.EPS || null,\n    dividend_yield: fundamentalsRaw.DividendYield || null,\n    fifty_two_week_high: fundamentalsRaw['52WeekHigh'] || null,\n    fifty_two_week_low: fundamentalsRaw['52WeekLow'] || null,\n    analyst_target: fundamentalsRaw.AnalystTargetPrice || null,\n    collected_at: new Date().toISOString(),\n    vendor: 'alpha_vantage',\n    errors: fundErrors,\n  };\n\n  const technical = {\n    symbol,\n    vendor: 'derived',\n    indicators: {\n      day_range_pct: market_data.previous_close\n        ? Number((((market_data.high - market_data.low) / market_data.previous_close) * 100).toFixed(2))\n        : null,\n      change_percent: market_data.change_percent,\n    },\n    errors: [],\n    collected_at: new Date().toISOString(),\n  };\n\n  const today = new Date();\n  const fromDate = new Date(today.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);\n  const toDate = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);\n  const news = { headlines: [], errors: [] };\n  const earnings = { events: [], errors: [] };\n\n  if (marketaux) {\n    try {\n      const articles = await httpRequest({\n        method: 'GET',\n        url: 'https://api.marketaux.com/v1/news/all',\n        qs: { symbols: symbol, filter_entities: true, language: 'en', limit: 5, api_token: marketaux },\n        json: true,\n        timeout: 30000,\n      });\n      news.headlines = (articles.data || []).slice(0, 5).map((a) => ({\n        title: a.title,\n        url: a.url,\n        published_at: a.published_at,\n        source: a.source,\n      }));\n    } catch (e) {\n      news.errors.push(`marketaux: ${e.message}`);\n    }\n  }\n\n  if (!news.headlines.length && finnhub) {\n    try {\n      const fromNews = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);\n      const toNews = today.toISOString().slice(0, 10);\n      const companyNews = await httpRequest({\n        method: 'GET',\n        url: 'https://finnhub.io/api/v1/company-news',\n        qs: { symbol, from: fromNews, to: toNews, token: finnhub },\n        json: true,\n        timeout: 30000,\n      });\n      news.headlines = (Array.isArray(companyNews) ? companyNews : []).slice(0, 5).map((a) => ({\n        title: a.headline || a.title,\n        url: a.url,\n        published_at: a.datetime ? new Date(a.datetime * 1000).toISOString() : null,\n        source: a.source,\n      }));\n      news.vendor = 'finnhub';\n    } catch (e) {\n      news.errors.push(`finnhub_news: ${e.message}`);\n    }\n  }\n\n  try {\n    const cal = await httpRequest({\n      method: 'GET',\n      url: 'https://finnhub.io/api/v1/calendar/earnings',\n      qs: { from: fromDate, to: toDate, symbol, token: finnhub },\n      json: true,\n      timeout: 30000,\n    });\n    earnings.events = (cal.earningsCalendar || []).slice(0, 3).map((e) => ({\n      date: e.date,\n      eps_estimate: e.epsEstimate,\n      revenue_estimate: e.revenueEstimate,\n      hour: e.hour,\n    }));\n  } catch (e) {\n    earnings.errors.push(`finnhub_earnings: ${e.message}`);\n  }\n\n  const news_earnings = { symbol, news, earnings, collected_at: new Date().toISOString() };\n\n  const marketValue = shares > 0 && price > 0 ? Number((shares * price).toFixed(2)) : null;\n  const costBasis = shares > 0 && avgCost > 0 ? Number((shares * avgCost).toFixed(2)) : null;\n  const unrealizedPnl = marketValue != null && costBasis != null ? Number((marketValue - costBasis).toFixed(2)) : null;\n  const unrealizedPct = costBasis > 0 && unrealizedPnl != null ? Number(((unrealizedPnl / costBasis) * 100).toFixed(2)) : null;\n\n  const merged_data = {\n    symbol,\n    position: {\n      shares,\n      avg_cost: avgCost,\n      market_value: marketValue,\n      cost_basis: costBasis,\n      unrealized_pnl: unrealizedPnl,\n      unrealized_pnl_percent: unrealizedPct,\n    },\n    market_data,\n    fundamentals,\n    technical,\n    news_earnings,\n    merged_at: new Date().toISOString(),\n  };\n\n  const userPrompt = JSON.stringify({\n    portfolio_name: cfg.portfolio_name,\n    symbol,\n    position: merged_data.position,\n    market_data,\n    fundamentals,\n    technical,\n    news_earnings,\n  }, null, 2);\n\n  let analysis;\n  let ai_analysis;\n  let usedAi = false;\n\n  if (apiKey) {\n    const aiErrors = [];\n    for (const model of fallbackModels) {\n      try {\n        const response = await httpRequest({\n          method: 'POST',\n          url: chatCompletionsUrl(apiKey),\n          headers: chatHeaders(apiKey),\n          body: {\n            model,\n            temperature: 0.2,\n            response_format: { type: 'json_object' },\n            messages: [\n              { role: 'system', content: systemPrompt },\n              { role: 'user', content: userPrompt },\n            ],\n          },\n          json: true,\n          timeout: 90000,\n        });\n\n        const raw = response.choices?.[0]?.message?.content;\n        if (!raw) throw new Error(`AI returned empty content (model: ${model})`);\n\n        try {\n          analysis = typeof raw === 'string' ? JSON.parse(raw) : raw;\n        } catch {\n          throw new Error(`Failed to parse AI JSON (model: ${model})`);\n        }\n\n        ai_analysis = {\n          ...analysis,\n          model: response.model || model,\n          usage: response.usage || null,\n          analyzed_at: new Date().toISOString(),\n          _analysis_mode: isOpenRouterKey(apiKey) ? 'openrouter' : 'openai',\n        };\n        usedAi = true;\n        break;\n      } catch (err) {\n        const status = httpStatus(err);\n        const detail = errDetail(err);\n        aiErrors.push(`${model}${status ? ` (${status})` : ''}: ${detail}`);\n        if (status === 402) break;\n      }\n    }\n\n    if (!usedAi) {\n      const detail = aiErrors.join(' | ') || 'AI request failed';\n      runWarnings.push(`${symbol}: AI fallback — ${detail}`);\n    }\n  } else {\n    runWarnings.push(`${symbol}: OPENAI_API_KEY not set — using rule-based signal`);\n  }\n\n  if (!usedAi) {\n    analysis = ruleBasedSignal(merged_data);\n    ai_analysis = {\n      ...analysis,\n      model: 'rule_based_fallback',\n      analyzed_at: new Date().toISOString(),\n    };\n  }\n\n  const signalAction = String(analysis.signal || 'HOLD').toUpperCase();\n  const confidence = Math.max(0, Math.min(100, Number(analysis.confidence || 0)));\n  if (!validSignals.has(signalAction)) {\n    throw new Error(`Invalid signal for ${symbol}: ${analysis.signal}`);\n  }\n\n  analyzed.push({\n    symbol,\n    shares,\n    avg_cost: avgCost,\n    merged_data,\n    signal: {\n      symbol,\n      action: signalAction,\n      confidence,\n      summary: analysis.summary || '',\n      catalysts: analysis.catalysts || [],\n      risks: analysis.risks || [],\n      key_levels: analysis.key_levels || {},\n      horizon: analysis.horizon || 'medium',\n      action_note: analysis.action_note || '',\n      extracted_at: new Date().toISOString(),\n      analysis_mode: ai_analysis._analysis_mode || ai_analysis.model || 'unknown',\n    },\n    ai_analysis,\n  });\n}\n\nconst counts = analyzed.reduce((acc, h) => {\n  const s = h.signal?.action || 'HOLD';\n  acc[s] = (acc[s] || 0) + 1;\n  return acc;\n}, {});\n\nconst avgConfidence = Number((analyzed.reduce((s, h) => s + Number(h.signal?.confidence || 0), 0) / analyzed.length).toFixed(1));\n\nreturn [{\n  json: {\n    run_id: cfg.run_id,\n    triggered_at: cfg.triggered_at,\n    portfolio_name: cfg.portfolio_name,\n    holdings_count: analyzed.length,\n    holdings: analyzed,\n    portfolio_summary: {\n      signal_counts: counts,\n      average_confidence: avgConfidence,\n      generated_at: new Date().toISOString(),\n      warnings: runWarnings,\n    },\n    finnhub_api_key: cfg.finnhub_api_key,\n    alpha_vantage_api_key: cfg.alpha_vantage_api_key,\n    marketaux_api_key: cfg.marketaux_api_key,\n    openai_api_key: cfg.openai_api_key,\n    openai_model: cfg.openai_model,\n    recipient_email: cfg.recipient_email,\n    sender_email: cfg.sender_email,\n    slack_bot_token: cfg.slack_bot_token,\n    slack_channel: cfg.slack_channel,\n    notify_email: cfg.notify_email,\n    notify_slack: cfg.notify_slack,\n    telegram_bot_token: cfg.telegram_bot_token,\n    telegram_chat_id: cfg.telegram_chat_id,\n    notify_telegram: cfg.notify_telegram,\n  },\n}];\n"
+      }
+    },
+    {
+      "id": "p2000000-0017-4000-8000-000000000017",
+      "name": "Generate HTML Report",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        280
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');\n\nconst rows = (item.holdings || []).map((h) => {\n  const md = h.merged_data?.market_data || {};\n  const pos = h.merged_data?.position || {};\n  const sig = h.signal || {};\n  const fund = h.merged_data?.fundamentals || {};\n  const color = sig.action === 'BUY' ? '#059669' : sig.action === 'SELL' ? '#dc2626' : '#d97706';\n\n  return `\n    <tr>\n      <td style=\"padding:12px;border-bottom:1px solid #e5e7eb;font-weight:600;\">${esc(h.symbol)}</td>\n      <td style=\"padding:12px;border-bottom:1px solid #e5e7eb;\"><span style=\"color:${color};font-weight:700;\">${esc(sig.action)}</span> (${esc(sig.confidence)}%)</td>\n      <td style=\"padding:12px;border-bottom:1px solid #e5e7eb;\">$${esc(md.price)}</td>\n      <td style=\"padding:12px;border-bottom:1px solid #e5e7eb;\">${esc(pos.shares)} @ $${esc(pos.avg_cost)}</td>\n      <td style=\"padding:12px;border-bottom:1px solid #e5e7eb;\">${esc(pos.unrealized_pnl)} (${esc(pos.unrealized_pnl_percent)}%)</td>\n      <td style=\"padding:12px;border-bottom:1px solid #e5e7eb;font-size:13px;\">${esc(sig.summary)}</td>\n      <td style=\"padding:12px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#6b7280;\">${esc(fund.sector)} / ${esc(fund.industry)}</td>\n    </tr>`;\n}).join('');\n\nconst summary = item.portfolio_summary || {};\nconst counts = summary.signal_counts || {};\n\nconst email_html = `<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\"><title>${esc(item.portfolio_name)} Report</title></head>\n<body style=\"margin:0;padding:0;background:#f3f4f6;font-family:Arial,sans-serif;\">\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#f3f4f6;padding:24px;\"><tr><td align=\"center\">\n<table width=\"900\" cellpadding=\"0\" cellspacing=\"0\" style=\"background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.08);\">\n<tr><td style=\"background:#0f172a;color:#fff;padding:24px 28px;\">\n  <p style=\"margin:0 0 6px;font-size:12px;opacity:.75;text-transform:uppercase;letter-spacing:1px;\">Portfolio Market Report</p>\n  <h1 style=\"margin:0;font-size:24px;\">${esc(item.portfolio_name)}</h1>\n  <p style=\"margin:8px 0 0;font-size:13px;opacity:.85;\">Run ${esc(item.run_id)} · ${esc(item.triggered_at)}</p>\n</td></tr>\n<tr><td style=\"padding:20px 28px;font-size:14px;color:#374151;\">\n  <strong>Summary:</strong> ${esc(item.holdings_count)} holdings · BUY ${esc(counts.BUY || 0)} · HOLD ${esc(counts.HOLD || 0)} · SELL ${esc(counts.SELL || 0)} · Avg confidence ${esc(summary.average_confidence)}%\n</td></tr>\n<tr><td style=\"padding:0 20px 24px;\">\n<table width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"border-collapse:collapse;font-size:14px;\">\n<thead><tr style=\"background:#f8fafc;text-align:left;\">\n  <th style=\"padding:10px 12px;\">Symbol</th><th style=\"padding:10px 12px;\">Signal</th><th style=\"padding:10px 12px;\">Price</th><th style=\"padding:10px 12px;\">Position</th><th style=\"padding:10px 12px;\">P&amp;L</th><th style=\"padding:10px 12px;\">Summary</th><th style=\"padding:10px 12px;\">Sector</th>\n</tr></thead>\n<tbody>${rows}</tbody>\n</table>\n</td></tr>\n<tr><td style=\"padding:16px 28px 24px;font-size:12px;color:#9ca3af;border-top:1px solid #e5e7eb;\">Generated by Portfolio Market Report (n8n) · APIs: Finnhub, Alpha Vantage, MarketAux, OpenRouter</td></tr>\n</table></td></tr></table></body></html>`;\n\nconst slack_text = [\n  `*${item.portfolio_name}* — Portfolio Report`,\n  `Run: ${item.run_id}`,\n  `Holdings: ${item.holdings_count} · BUY ${counts.BUY || 0} · HOLD ${counts.HOLD || 0} · SELL ${counts.SELL || 0}`,\n  '',\n  ...(item.holdings || []).map((h) => `• *${h.symbol}* ${h.signal?.action} (${h.signal?.confidence}%) — ${h.signal?.summary}`)\n].join('\\n');\n\nreturn [{\n  json: {\n    ...item,\n    email_html,\n    email_subject: `${item.portfolio_name} — Portfolio Report (${item.run_id})`,\n    slack_text,\n    telegram_text: slack_text.replace(/\\*/g, '')\n  }\n}];"
+      }
+    },
+    {
+      "id": "p2000000-0018-4000-8000-000000000018",
+      "name": "Notify Email?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        860,
+        180
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.notify_email }}",
+              "value2": true
+            }
+          ],
+          "string": [
+            {
+              "value1": "={{ ($json.recipient_email || '').trim() }}",
+              "operation": "notEmpty"
+            }
+          ]
+        },
+        "combineOperation": "all"
+      }
+    },
+    {
+      "id": "p2000000-0019-4000-8000-000000000019",
+      "name": "Send Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1100,
+        120
+      ],
+      "onError": "continueRegularOutput",
+      "parameters": {
+        "fromEmail": "={{ $json.sender_email || $json.recipient_email || 'information@variphi.com' }}",
+        "toEmail": "={{ $json.recipient_email || 'information@variphi.com' }}",
+        "subject": "={{ $json.email_subject }}",
+        "emailFormat": "html",
+        "html": "={{ $json.email_html }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "p2000000-0020-4000-8000-000000000020",
+      "name": "Notify Slack?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        860,
+        320
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.notify_slack }}",
+              "value2": true
+            }
+          ],
+          "string": [
+            {
+              "value1": "={{ ($json.slack_bot_token || '').trim() }}",
+              "operation": "notEmpty"
+            }
+          ]
+        },
+        "combineOperation": "all"
+      }
+    },
+    {
+      "id": "p2000000-0021-4000-8000-000000000021",
+      "name": "Send Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1100,
+        280
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "https://slack.com/api/chat.postMessage",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $json.slack_bot_token }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json; charset=utf-8"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ { channel: $json.slack_channel || '#portfolio-alerts', text: $json.slack_text || '' } }}",
+        "options": {
+          "timeout": 30000
+        }
+      }
+    },
+    {
+      "id": "p2000000-0024-4000-8000-000000000024",
+      "name": "Prepare Log Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        600
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nconst log = {\n  run_id: item.run_id,\n  portfolio_name: item.portfolio_name,\n  triggered_at: item.triggered_at,\n  holdings_count: item.holdings_count,\n  portfolio_summary: item.portfolio_summary,\n  holdings: (item.holdings || []).map((h) => ({\n    symbol: h.symbol,\n    signal: h.signal?.action,\n    confidence: h.signal?.confidence,\n    price: h.merged_data?.market_data?.price,\n    summary: h.signal?.summary\n  })),\n  logged_at: new Date().toISOString()\n};\n\nreturn [{\n  json: log,\n  binary: {}\n}];"
+      }
+    },
+    {
+      "id": "p2000000-0025-4000-8000-000000000025",
+      "name": "Store Logs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        600
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst content = JSON.stringify(item, null, 2);\n\nreturn [{\n  json: {\n    ...item,\n    log_file: `/files/portfolio-report-${item.run_id}.json`\n  },\n  binary: {\n    data: {\n      data: Buffer.from(content, 'utf8').toString('base64'),\n      mimeType: 'application/json',\n      fileName: `portfolio-report-${item.run_id}.json`\n    }\n  }\n}];"
+      }
+    },
+    {
+      "id": "p2000000-0026-4000-8000-000000000026",
+      "name": "Write Log File",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        1580,
+        600
+      ],
+      "parameters": {
+        "fileName": "={{ $json.log_file }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "p2000000-0027-4000-8000-000000000027",
+      "name": "Return Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1340,
+        280
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst telegramSent = Boolean(item.notify_telegram && item.telegram_bot_token && item.telegram_chat_id);\n\nreturn [{\n  json: {\n    success: true,\n    run_id: item.run_id,\n    portfolio_name: item.portfolio_name,\n    holdings_count: item.holdings_count,\n    portfolio_summary: item.portfolio_summary,\n    telegram_sent: telegramSent,\n    notifications: {\n      email: Boolean(item.notify_email && item.recipient_email),\n      slack: Boolean(item.notify_slack && item.slack_bot_token),\n      telegram: telegramSent,\n      telegram_sent: telegramSent\n    },\n    log_file: `/files/portfolio-report-${item.run_id}.json`,\n    completed_at: new Date().toISOString()\n  }\n}];"
+      }
+    },
+    {
+      "id": "p2000000-0028-4000-8000-000000000028",
+      "name": "Note: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1300,
+        -280
+      ],
+      "parameters": {
+        "width": 520,
+        "height": 260,
+        "content": "## Portfolio Market Report\n\n**Triggers:** Webhook `POST /portfolio-market-report` + Cron (weekdays 08:00)\n\n**Flow:** Validate → Process All Holdings → HTML report → notifications → logs\n\n**OpenRouter:** uses `$env.OPENROUTER_API_KEY`. If credits are missing (HTTP 402), rule-based BUY/HOLD/SELL signals are generated from price/P&L data instead.\n\n**APIs:** Finnhub (quotes/news), Alpha Vantage (fundamentals), MarketAux (news fallback), OpenRouter (optional AI).\n\nAlpha Vantage free tier: ~13s delay between symbols is built in."
+      }
+    },
+    {
+      "id": "p2000000-0022-4000-8000-000000000022",
+      "name": "Notify Telegram?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        860,
+        460
+      ],
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.notify_telegram }}",
+              "value2": true
+            }
+          ],
+          "string": [
+            {
+              "value1": "={{ ($json.telegram_bot_token || '').trim() }}",
+              "operation": "notEmpty"
+            },
+            {
+              "value1": "={{ ($json.telegram_chat_id || '').trim() }}",
+              "operation": "notEmpty"
+            }
+          ]
+        },
+        "combineOperation": "all"
+      }
+    },
+    {
+      "id": "p2000000-0023-4000-8000-000000000023",
+      "name": "Send Telegram",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        440
+      ],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst token = String(item.telegram_bot_token || '').trim();\nconst chatId = String(item.telegram_chat_id || '').trim();\nconst text = String(item.telegram_text || item.slack_text || '').trim();\n\nif (!token || !chatId) {\n  throw new Error('Telegram skipped: missing telegram_bot_token or telegram_chat_id.');\n}\nif (!text) {\n  throw new Error('Telegram skipped: empty message text.');\n}\n\nawait this.helpers.httpRequest({\n  method: 'POST',\n  url: `https://api.telegram.org/bot${token}/sendMessage`,\n  body: {\n    chat_id: chatId,\n    text,\n  },\n  json: true,\n  timeout: 30000,\n});\n\nreturn [{ json: { ...item, telegram_sent: true } }];"
+      }
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cron Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set: Sample Portfolio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set: Sample Portfolio": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Triggers": {
+      "main": [
+        [
+          {
+            "node": "Set Portfolio / Holdings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Portfolio / Holdings": {
+      "main": [
+        [
+          {
+            "node": "Validate Holdings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Holdings": {
+      "main": [
+        [
+          {
+            "node": "Process All Holdings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate HTML Report": {
+      "main": [
+        [
+          {
+            "node": "Notify Email?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Slack?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Notify Telegram?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Log Row",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Email?": {
+      "main": [
+        [
+          {
+            "node": "Send Email",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Prepare Log Row": {
+      "main": [
+        [
+          {
+            "node": "Store Logs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Logs": {
+      "main": [
+        [
+          {
+            "node": "Write Log File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Slack?": {
+      "main": [
+        [
+          {
+            "node": "Send Slack",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Process All Holdings": {
+      "main": [
+        [
+          {
+            "node": "Generate HTML Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Telegram?": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "saveExecutionProgress": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": [
+    {
+      "name": "portfolio"
+    },
+    {
+      "name": "stock-market"
+    },
+    {
+      "name": "openrouter"
+    },
+    {
+      "name": "reporting"
+    }
+  ]
+}
