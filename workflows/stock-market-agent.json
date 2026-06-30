@@ -49,7 +49,7 @@
       ],
       "parameters": {
         "mode": "raw",
-        "jsonOutput": "{\n  \"symbol\": \"AAPL\",\n  \"exchange\": \"NASDAQ\",\n  \"strategy_name\": \"swing-momentum-v1\",\n  \"timeframe\": \"1day\",\n  \"account_equity\": 100000,\n  \"risk_percent_per_trade\": 1,\n  \"stop_loss_percent\": 2,\n  \"take_profit_percent\": 4,\n  \"max_position_size_percent\": 20,\n  \"min_signal_confidence\": 70,\n  \"max_daily_trades\": 3,\n  \"dry_run\": true,\n  \"broker_execution_webhook_url\": \"https://httpbin.org/post\",\n  \"market_data_api_key\": \"\",\n  \"openrouter_api_key\": \"PASTE_YOUR_OPENROUTER_KEY_HERE\",\n  \"openrouter_model\": \"openai/gpt-4o-mini\",\n  \"slack_channel\": \"#trading-alerts\"\n}",
+        "jsonOutput": "{\n  \"symbol\": \"AAPL\",\n  \"exchange\": \"NASDAQ\",\n  \"strategy_name\": \"swing-momentum-v1\",\n  \"timeframe\": \"1day\",\n  \"account_equity\": 100000,\n  \"risk_percent_per_trade\": 1,\n  \"stop_loss_percent\": 2,\n  \"take_profit_percent\": 4,\n  \"max_position_size_percent\": 20,\n  \"min_signal_confidence\": 70,\n  \"max_daily_trades\": 3,\n  \"dry_run\": true,\n  \"broker_execution_webhook_url\": \"https://httpbin.org/post\",\n  \"market_data_api_key\": \"\",\n  \"openrouter_api_key\": \"YOUR_OPENROUTER_API_KEY\",\n  \"openrouter_model\": \"openai/gpt-4o-mini\",\n  \"slack_channel\": \"#trading-alerts\"\n}",
         "options": {}
       }
     },
@@ -166,7 +166,7 @@
             {
               "id": "openrouter_api_key",
               "name": "openrouter_api_key",
-              "value": "={{ ($json.body?.openrouter_api_key || $json.openrouter_api_key || 'PASTE_YOUR_OPENROUTER_KEY_HERE').toString().trim().replace(/^Bearer\\s+/i, '') }}",
+              "value": "={{ ($json.body?.openrouter_api_key || $json.openrouter_api_key || 'YOUR_OPENROUTER_API_KEY').toString().trim().replace(/^Bearer\\s+/i, '') }}",
               "type": "string"
             },
             {
@@ -362,7 +362,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Bearer YOUR_SLACK_API_TOKEN_HERE"
+              "value": "=Bearer YOUR_SLACK_TOKEN"
             },
             {
               "name": "Content-Type",

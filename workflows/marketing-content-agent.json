@@ -51,7 +51,7 @@
       ],
       "parameters": {
         "mode": "raw",
-        "jsonOutput": "{\n  \"campaign_name\": \"Q2 Product Launch\",\n  \"topic\": \"How n8n AI agents automate marketing content creation\",\n  \"audience\": \"marketing managers at B2B SaaS companies\",\n  \"tone\": \"professional yet approachable\",\n  \"platforms\": [\"blog\", \"linkedin\", \"twitter\", \"email\"],\n  \"keywords\": [\"n8n\", \"marketing automation\", \"AI content agent\"],\n  \"call_to_action\": \"Start your free trial\",\n  \"goal\": \"drive signups for our automation platform\",\n  \"context\": \"We help marketing teams generate blog, social, and email content in one workflow.\",\n  \"recipient_email\": \"\",\n  \"openrouter_api_key\": \"PASTE_YOUR_OPENROUTER_KEY_HERE\",\n  \"openrouter_model\": \"openai/gpt-4o-mini\"\n}",
+        "jsonOutput": "{\n  \"campaign_name\": \"Q2 Product Launch\",\n  \"topic\": \"How n8n AI agents automate marketing content creation\",\n  \"audience\": \"marketing managers at B2B SaaS companies\",\n  \"tone\": \"professional yet approachable\",\n  \"platforms\": [\"blog\", \"linkedin\", \"twitter\", \"email\"],\n  \"keywords\": [\"n8n\", \"marketing automation\", \"AI content agent\"],\n  \"call_to_action\": \"Start your free trial\",\n  \"goal\": \"drive signups for our automation platform\",\n  \"context\": \"We help marketing teams generate blog, social, and email content in one workflow.\",\n  \"recipient_email\": \"\",\n  \"openrouter_api_key\": \"YOUR_OPENROUTER_API_KEY\",\n  \"openrouter_model\": \"openai/gpt-4o-mini\"\n}",
         "options": {}
       }
     },
@@ -271,7 +271,7 @@
       "parameters": {
         "width": 420,
         "height": 200,
-        "content": "## Marketing Content Agent\n\n**OpenRouter auth (pick one):**\n1. POST body field `openrouter_api_key`\n2. Sample campaign brief node key value\n3. HTTP Header Auth credential on **OpenRouter AI** node\n\nWorkflow now auto-runs every 5 hours via **Schedule Trigger**.\n\nGenerated content is also saved to `/files/marketing-content-latest.xlsx`.\n\nCredential setup: Header name `Authorization`, value `Bearer sk-or-v1-...`\n\n**SMTP credential for Send Email node:**\nHost: `smtpout.secureserver.net`\nPort: `465`\nUser: `information@variphi.com`\nPassword: `YOUR_SMTP_PASSWORD_HERE`\nSSL/TLS: Enabled"
+        "content": "## Marketing Content Agent\n\n**OpenRouter auth (pick one):**\n1. POST body field `openrouter_api_key`\n2. Sample campaign brief node key value\n3. HTTP Header Auth credential on **OpenRouter AI** node\n\nWorkflow now auto-runs every 5 hours via **Schedule Trigger**.\n\nGenerated content is also saved to `/files/marketing-content-latest.xlsx`.\n\nCredential setup: Header name `Authorization`, value `Bearer sk-or-v1-...`\n\n**SMTP credential for Send Email node:**\nHost: `smtpout.secureserver.net`\nPort: `465`\nUser: `information@variphi.com`\nPassword: `Nextneural@2402`\nSSL/TLS: Enabled"
       }
     },
     {

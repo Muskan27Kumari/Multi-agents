@@ -40,7 +40,7 @@
       ],
       "parameters": {
         "mode": "raw",
-        "jsonOutput": "{\n  \"openrouter_api_key\": \"PASTE_YOUR_OPENROUTER_KEY_HERE\",\n  \"openrouter_model\": \"openai/gpt-4o-mini\",\n  \"sender_email\": \"information@variphi.com\",\n  \"hr_email\": \"information@variphi.com\",\n  \"dry_run\": true,\n  \"stage\": \"create_job\",\n  \"job_title\": \"Senior Software Engineer\",\n  \"department\": \"Engineering\",\n  \"location\": \"Remote\",\n  \"employment_type\": \"full_time\",\n  \"required_skills\": [\n    \"Python\",\n    \"PostgreSQL\",\n    \"n8n\"\n  ],\n  \"nice_to_have_skills\": [\n    \"Kubernetes\"\n  ],\n  \"min_experience_years\": 5,\n  \"salary_range\": \"120000-160000 USD\",\n  \"hiring_manager\": \"Jane Smith\",\n  \"headcount\": 1,\n  \"publish_webhooks\": {}\n}",
+        "jsonOutput": "{\n  \"openrouter_api_key\": \"YOUR_OPENROUTER_API_KEY\",\n  \"openrouter_model\": \"openai/gpt-4o-mini\",\n  \"sender_email\": \"information@variphi.com\",\n  \"hr_email\": \"information@variphi.com\",\n  \"dry_run\": true,\n  \"stage\": \"create_job\",\n  \"job_title\": \"Senior Software Engineer\",\n  \"department\": \"Engineering\",\n  \"location\": \"Remote\",\n  \"employment_type\": \"full_time\",\n  \"required_skills\": [\n    \"Python\",\n    \"PostgreSQL\",\n    \"n8n\"\n  ],\n  \"nice_to_have_skills\": [\n    \"Kubernetes\"\n  ],\n  \"min_experience_years\": 5,\n  \"salary_range\": \"120000-160000 USD\",\n  \"hiring_manager\": \"Jane Smith\",\n  \"headcount\": 1,\n  \"publish_webhooks\": {}\n}",
         "options": {}
       }
     },
@@ -187,7 +187,7 @@
             {
               "id": "openrouter_api_key",
               "name": "openrouter_api_key",
-              "value": "={{ ($json.body?.openrouter_api_key || $json.openrouter_api_key || 'PASTE_YOUR_OPENROUTER_KEY_HERE').toString().trim().replace(/^Bearer\\s+/i, '') }}",
+              "value": "={{ ($json.body?.openrouter_api_key || $json.openrouter_api_key || 'YOUR_OPENROUTER_API_KEY').toString().trim().replace(/^Bearer\\s+/i, '') }}",
               "type": "string"
             },
             {

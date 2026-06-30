@@ -1,32 +1,32 @@
 {
   "appointments": [
     {
-      "id": "apt_1781545906726",
-      "chat_id": "7887196330",
-      "customer_name": "Shivam",
-      "customer_email": "shivamskr151@gmail.com",
-      "customer_phone": "9798415480",
-      "service_id": "58",
-      "service_type": "Mental Health Counseling",
-      "service_category": "Mental Health & Wellness",
-      "duration_min": 50,
+      "id": "apt_1782711039444",
+      "chat_id": "5296627077",
+      "customer_name": "Muskan Kumari",
+      "customer_email": "muskan.betla@gmail.com",
+      "customer_phone": "8764524377",
+      "service_id": "66",
+      "service_type": "Flu Shot",
+      "service_category": "Vaccination & Immunization",
+      "duration_min": 15,
       "requirements": [
         "Government photo ID",
-        "Previous counseling or psychiatric reports",
-        "List of current medications",
-        "Emergency contact details",
-        "Quiet private space for telehealth sessions"
+        "Previous vaccination card / records",
+        "Allergy history",
+        "Doctor prescription for travel vaccines (if applicable)",
+        "Wear loose sleeves for arm injection"
       ],
       "restaurant_name": null,
-      "date": "2026-06-19",
+      "date": "2026-07-02",
       "time_slot": "12:00",
       "telegram_bot_token": "8822111560:AAEWHbqWPO04dXZLqODtfN0GFYguAOMCeqE",
       "status": "confirmed",
-      "created_at": "2026-06-15T17:51:46.726Z",
+      "created_at": "2026-06-29T05:30:39.444Z",
       "reminder_sent": false,
-      "calendar_event_id": "apt_1781545906726",
-      "appointment_start": "2026-06-19T12:00:00.000Z",
-      "appointment_end": "2026-06-19T12:50:00.000Z"
+      "calendar_event_id": "apt_1782711039444",
+      "appointment_start": "2026-07-02T12:00:00.000Z",
+      "appointment_end": "2026-07-02T12:15:00.000Z"
     }
   ]
 }
