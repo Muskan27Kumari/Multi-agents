@@ -14,7 +14,6 @@ window.FOOTER = () => `
     <div class="foot-col">
       <h5>Explore</h5>
       <a href="agents.html">All agents</a>
-      <a href="index.html#how">How it works</a>
       <a href="index.html#stack">Tech stack</a>
     </div>
     <div class="foot-col">

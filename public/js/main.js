@@ -22,7 +22,7 @@ window.mountShell = (active) => {
       rag: 'rag-knowledge-agent',
       marketing: 'marketing-content-agent',
       portfolio: 'stock-market-agent',
-      resume: 'hr-recruitment-agent',
+      hr: 'hr-recruitment-agent',
       review: 'customer-review-responder',
       booking: 'appointment-booking-agent',
     };
@@ -41,6 +41,16 @@ window.mountShell = (active) => {
           const driveBot = ragAgent.extraBots.find(eb => eb.name === 'VGI Drive Assistant');
           if (driveBot) {
             driveBot.bot = '@' + username;
+          }
+        }
+      }
+
+      if (key === 'resume') {
+        const hrAgent = (window.AGENTS || []).find(a => a.id === 'hr-recruitment-agent');
+        if (hrAgent && hrAgent.extraBots) {
+          const resumeBot = hrAgent.extraBots.find(eb => eb.name === 'VGI Resume Analyzer');
+          if (resumeBot) {
+            resumeBot.bot = '@' + username;
           }
         }
       }

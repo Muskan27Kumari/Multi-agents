@@ -125,51 +125,6 @@
     .chip-4 { bottom: 30px; right: 60px; animation-delay: -1s;}
     .chip-5 { top: 240px; left: 270px; animation-delay: -4s;}
 
-    /* ───── HOW IT WORKS ───── */
-    .steps {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-      gap: 18px;
-      margin-top: 56px;
-    }
-    .step {
-      position: relative;
-      padding: 32px 28px;
-      border: 1px solid var(--border);
-      border-radius: 24px;
-      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0));
-      overflow: hidden;
-    }
-    .step-num {
-      font-family: "Bricolage Grotesque", sans-serif;
-      font-size: 56px;
-      line-height: 1;
-      font-weight: 500;
-      background: var(--grad);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      margin-bottom: 24px;
-      display: block;
-    }
-    .step h3 {
-      font-size: 22px;
-      margin-bottom: 10px;
-    }
-    .step p { color: var(--text-muted); font-size: 15px; line-height: 1.6; }
-    .step-line {
-      position: absolute;
-      top: 60px;
-      right: -10px;
-      width: 20px;
-      height: 1px;
-      background: var(--border-strong);
-      display: none;
-    }
-    @media (min-width: 920px) {
-      .step:not(:last-child) .step-line { display: block; }
-    }
-
     /* ───── PREVIEW GRID ───── */
     .agents-preview {
       display: grid;
@@ -255,6 +210,178 @@
     }
     .cta-card > * { position: relative; }
     @media (max-width: 600px) { .cta-card { padding: 48px 24px; } }
+
+    /* ───── DETAILS PAGE STYLES INCORPORATED ───── */
+    .crumbs {
+      color: var(--text-dim);
+      font-size: 14px;
+      display: flex; gap: 8px; align-items: center;
+    }
+    .crumbs a { color: var(--text-muted); transition: color 160ms;}
+    .crumbs a:hover { color: var(--text); }
+
+    .detail-hero {
+      padding-bottom: 40px;
+    }
+    .d-head { display: flex; gap: 22px; align-items: flex-start; }
+    .d-icon {
+      width: 72px; height: 72px;
+      border-radius: 20px;
+      background: var(--grad-soft);
+      border: 1px solid rgba(139,92,246,0.34);
+      display: grid; place-items: center;
+      color: #c7bcff;
+      flex: 0 0 auto;
+      box-shadow: 0 16px 40px -16px rgba(139,92,246,0.6);
+    }
+    .d-icon svg { width: 32px; height: 32px; }
+    .d-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .d-title {
+      font-size: clamp(36px, 5.4vw, 64px);
+      letter-spacing: -0.03em;
+      line-height: 1.02;
+    }
+    .d-tagline {
+      color: var(--text-muted);
+      font-size: 18px;
+      line-height: 1.55;
+      margin-top: 22px;
+      max-width: 620px;
+    }
+    .d-ctas { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 32px; }
+
+    /* Request card */
+    .req-card {
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.005) 100%),
+        var(--bg-elev-2);
+      border: 1px solid var(--border-strong);
+      border-radius: 24px;
+      padding: 28px;
+    }
+    .req-card h4 {
+      font-size: 18px;
+      margin-bottom: 6px;
+    }
+    .req-card p { color: var(--text-muted); font-size: 14px; line-height: 1.55; }
+    .req-list { margin: 22px 0 24px; display: flex; flex-direction: column; gap: 12px; padding: 0; }
+    .req-list li {
+      display: flex; gap: 10px; align-items: flex-start;
+      color: var(--text-muted);
+      font-size: 14px;
+      list-style: none;
+    }
+    .req-list li svg {
+      width: 18px; height: 18px;
+      color: var(--mint);
+      flex: 0 0 auto;
+      margin-top: 1px;
+    }
+    .req-card .btn-grad, .req-card .btn-ghost { width: 100%; justify-content: center; }
+
+    /* Body sections */
+    .d-body {
+      margin-top: 48px;
+      padding-bottom: 40px;
+    }
+
+    .block h2 {
+      font-size: 28px;
+      margin-bottom: 24px;
+      letter-spacing: -0.02em;
+    }
+    .block h2 .num {
+      display: inline-block;
+      font-family: "DM Sans", sans-serif;
+      font-size: 13px;
+      letter-spacing: 0.18em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-right: 12px;
+    }
+    .long-desc {
+      color: var(--text-muted);
+      font-size: 16.5px;
+      line-height: 1.7;
+      max-width: 620px;
+    }
+    .features {
+      display: flex; flex-direction: column; gap: 16px;
+    }
+    .feature {
+      display: flex; gap: 14px;
+      padding: 18px 20px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.015);
+      transition: border-color 200ms, background 200ms;
+    }
+    .feature:hover {
+      border-color: var(--border-strong);
+      background: rgba(255,255,255,0.03);
+    }
+    .feature .check {
+      width: 28px; height: 28px;
+      border-radius: 999px;
+      background: var(--grad-soft);
+      border: 1px solid rgba(139,92,246,0.4);
+      color: #c7bcff;
+      display: grid; place-items: center;
+      flex: 0 0 auto;
+    }
+    .feature .check svg { width: 14px; height: 14px; }
+    .feature p {
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    .stack-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+      gap: 12px;
+    }
+    .stack-pill {
+      padding: 16px 18px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.025);
+      display: flex; align-items: center; gap: 12px;
+      transition: all 200ms;
+    }
+    .stack-pill:hover { border-color: var(--border-strong); transform: translateY(-2px); }
+    .stack-pill .stack-dot {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      background: var(--grad);
+      flex: 0 0 auto;
+      box-shadow: 0 4px 14px -4px rgba(139,92,246,0.5);
+    }
+    .stack-pill span { font-size: 14.5px; font-weight: 500; }
+
+    .related-head { margin-bottom: 24px; display:flex; justify-content:space-between; align-items:end; }
+    .related-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+      gap: 18px;
+    }
+
+    /* Sidebar quick facts */
+    .qfacts {
+      list-style: none; padding: 0; margin: 24px 0;
+      display: flex; flex-direction: column;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+    }
+    .qfacts li {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 12px 16px;
+      font-size: 13.5px;
+    }
+    .qfacts li:not(:last-child) { border-bottom: 1px solid var(--border); }
+    .qfacts li span:first-child { color: var(--text-dim); }
+    .qfacts li span:last-child { color: var(--text); font-weight: 500; }
   </style>
 </head>
 <body data-screen-label="Homepage">
@@ -264,12 +391,6 @@
     <!-- HERO -->
     <section class="hero">
       <div class="container">
-        <div class="reveal">
-          <div class="hero-stat">
-            ⚡ Now live <strong>10 agents</strong>
-            <span style="padding-right: 8px;">ready to deploy</span>
-          </div>
-        </div>
 
         <h1 class="hero-title reveal">
           A universe of <em>production-grade</em><br/>AI agents for your business
@@ -279,15 +400,6 @@
           Browse purpose-built agents for sales, support, ops, and content. Pick one, request it, and we'll deploy it on your stack — usually in under two weeks.
         </p>
 
-        <div class="hero-ctas reveal">
-          <a class="btn btn-grad" href="agents.html">
-            Explore all agents
-            <span style="display:inline-flex" id="i-arrow1"></span>
-          </a>
-          <a class="btn btn-ghost" href="contact.html">
-            Request a custom agent
-          </a>
-        </div>
 
         <!-- floating constellation -->
         <div class="hero-orbit" aria-hidden="true">
@@ -304,471 +416,43 @@
       </div>
     </section>
 
-    <!-- HOW IT WORKS -->
-    <section id="how">
+    <!-- AGENTS CATALOGUE -->
+    <section id="catalog-section" style="padding-top: 0; padding-bottom: 48px;">
       <div class="container">
         <div class="reveal" style="margin-bottom: 40px;">
-          <div class="eyebrow">How they work</div>
-          <h2 class="section-title">Agent Blueprints &amp; Guides</h2>
-          <p class="section-sub">Explore the data pipelines, configurations, required inputs, and expected outputs for each of our 6 active agents.</p>
-        </div>
-
-        <div class="how-dashboard reveal">
-          <!-- Left side tabs list -->
-          <div class="how-tabs">
-            <button class="how-tab active" data-target="guide-rag">
-              <span class="how-tab-icon" id="ht-rag"></span>
-              <span class="how-tab-label">RAG Knowledge Agent</span>
-            </button>
-            <button class="how-tab" data-target="guide-marketing">
-              <span class="how-tab-icon" id="ht-marketing"></span>
-              <span class="how-tab-label">Marketing Content Agent</span>
-            </button>
-            <button class="how-tab" data-target="guide-stock">
-              <span class="how-tab-icon" id="ht-stock"></span>
-              <span class="how-tab-label">Stock Market Agent</span>
-            </button>
-            <button class="how-tab" data-target="guide-hr">
-              <span class="how-tab-icon" id="ht-hr"></span>
-              <span class="how-tab-label">HR Recruitment Agent</span>
-            </button>
-            <button class="how-tab" data-target="guide-review">
-              <span class="how-tab-icon" id="ht-review"></span>
-              <span class="how-tab-label">Customer Review Responder</span>
-            </button>
-            <button class="how-tab" data-target="guide-booking">
-              <span class="how-tab-icon" id="ht-booking"></span>
-              <span class="how-tab-label">Appointment Booking Agent</span>
-            </button>
-          </div>
-
-          <!-- Right side details panels -->
-          <div class="how-panel-container">
-            <!-- 1. RAG Knowledge Agent -->
-            <article class="how-panel active" id="guide-rag">
-              <header class="panel-header">
-                <h3>RAG Knowledge Agent</h3>
-                <span class="badge badge-grad">Knowledge Base</span>
-              </header>
-              <p class="panel-desc">Turn your local documents, PDFs, Notion pages, and shared drives into an intelligent, Q&amp;A chat assistant that answers with absolute accuracy and exact citations.</p>
-              
-              <div class="panel-grid">
-                <div class="panel-card">
-                  <h4>Required Inputs</h4>
-                  <ul>
-                    <li><strong>Ingestion Sources:</strong> PDF, DOCX, Notion, or Google Drive folder sync.</li>
-                    <li><strong>Query text:</strong> Question from user.</li>
-                    <li><strong>Access tokens:</strong> Google Drive or Confluence permissions.</li>
-                  </ul>
-                </div>
-                <div class="panel-card">
-                  <h4>Expected Outputs</h4>
-                  <ul>
-                    <li><strong>Answer:</strong> Synthesis based strictly on reference context.</li>
-                    <li><strong>Citations:</strong> Filename, page number, and source URL reference.</li>
-                    <li><strong>Confidence Score:</strong> Retrieval similarity value.</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div class="how-use">
-                <h4>How to Use</h4>
-                <ol>
-                  <li>Connect your document sources in your dashboard panel.</li>
-                  <li>Wait for the vector indexing engine to chunk and embed files.</li>
-                  <li>Ask questions directly in the web chat widget, Slack, or Telegram.</li>
-                </ol>
-              </div>
-
-              <div class="how-pipeline">
-                <h4>Data Pipeline &amp; Process</h4>
-                <div class="pipeline-track">
-                  <div class="pipeline-step">
-                    <span class="step-badge">1</span>
-                    <span>Document Upload</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">2</span>
-                    <span>Embedding &amp; Vector Store</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">3</span>
-                    <span>Similarity Search</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">4</span>
-                    <span>LLM Citation Synthesis</span>
-                  </div>
-                </div>
-              </div>
-            </article>
-
-            <!-- 2. Marketing Content Agent -->
-            <article class="how-panel" id="guide-marketing">
-              <header class="panel-header">
-                <h3>Marketing Content Agent</h3>
-                <span class="badge badge-grad">Marketing</span>
-              </header>
-              <p class="panel-desc">Generate ready-to-publish, multi-channel social media posts, email newsletters, and blog drafts starting from a single content campaign brief.</p>
-              
-              <div class="panel-grid">
-                <div class="panel-card">
-                  <h4>Required Inputs</h4>
-                  <ul>
-                    <li><strong>Campaign brief:</strong> Subject topic, core messaging points.</li>
-                    <li><strong>Target Channels:</strong> LinkedIn, Instagram, X (Twitter), Blog, or Email.</li>
-                    <li><strong>Brand Tone:</strong> Past top-performing posts style.</li>
-                  </ul>
-                </div>
-                <div class="panel-card">
-                  <h4>Expected Outputs</h4>
-                  <ul>
-                    <li><strong>Draft variants:</strong> Multi-channel formatted text variants.</li>
-                    <li><strong>Visual assets:</strong> DALL·E 3 generated cover image concept prompts.</li>
-                    <li><strong>Republish Queue:</strong> Direct sync to Buffer/Meta calendar slots.</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div class="how-use">
-                <h4>How to Use</h4>
-                <ol>
-                  <li>Input your campaign brief details and select target outputs.</li>
-                  <li>Click "Generate" and review the draft variations in your editor.</li>
-                  <li>Edit or click "Publish" to schedule the posts onto your channels.</li>
-                </ol>
-              </div>
-
-              <div class="how-pipeline">
-                <h4>Data Pipeline &amp; Process</h4>
-                <div class="pipeline-track">
-                  <div class="pipeline-step">
-                    <span class="step-badge">1</span>
-                    <span>Brief Submission</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">2</span>
-                    <span>Channel Adaptation</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">3</span>
-                    <span>Brand Verification</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">4</span>
-                    <span>Schedule / Publish</span>
-                  </div>
-                </div>
-              </div>
-            </article>
-
-            <!-- 3. Stock Market Agent -->
-            <article class="how-panel" id="guide-stock">
-              <header class="panel-header">
-                <h3>Stock Market Agent</h3>
-                <span class="badge badge-grad">Finance</span>
-              </header>
-              <p class="panel-desc">Sync with broker holding portfolios to track fundamentals, news indicators, and technical charts, surfacing real-time unusual movement notifications.</p>
-              
-              <div class="panel-grid">
-                <div class="panel-card">
-                  <h4>Required Inputs</h4>
-                  <ul>
-                    <li><strong>Broker linkage:</strong> Read-only broker API or CSV upload.</li>
-                    <li><strong>Watchlist symbols:</strong> Specific stock tickers.</li>
-                    <li><strong>Alert thresholds:</strong> Price/Volume change triggers.</li>
-                  </ul>
-                </div>
-                <div class="panel-card">
-                  <h4>Expected Outputs</h4>
-                  <ul>
-                    <li><strong>Morning Briefing:</strong> Summary watchlist reports before market open.</li>
-                    <li><strong>Real-time alerts:</strong> Slack, Webhook, or Telegram text notifications.</li>
-                    <li><strong>Source documentation:</strong> Direct links to financial reports or filings.</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div class="how-use">
-                <h4>How to Use</h4>
-                <ol>
-                  <li>Link your brokerage account securely using read-only API access.</li>
-                  <li>Define triggers for stock watchlists.</li>
-                  <li>Configure notifications to hit your workspace channel (Slack/Telegram).</li>
-                </ol>
-              </div>
-
-              <div class="how-pipeline">
-                <h4>Data Pipeline &amp; Process</h4>
-                <div class="pipeline-track">
-                  <div class="pipeline-step">
-                    <span class="step-badge">1</span>
-                    <span>Portfolio Synchronization</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">2</span>
-                    <span>TA &amp; News Crawling</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">3</span>
-                    <span>Signal Analysis</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">4</span>
-                    <span>Alert Dispatch</span>
-                  </div>
-                </div>
-              </div>
-            </article>
-
-            <!-- 4. HR Recruitment Agent -->
-            <article class="how-panel" id="guide-hr">
-              <header class="panel-header">
-                <h3>HR Recruitment Agent</h3>
-                <span class="badge badge-grad">HR</span>
-              </header>
-              <p class="panel-desc">Automate candidate screening by scanning CVs against active job descriptions, scoring fit, and initiating interview calendar schedulers.</p>
-              
-              <div class="panel-grid">
-                <div class="panel-card">
-                  <h4>Required Inputs</h4>
-                  <ul>
-                    <li><strong>Job Description:</strong> Active role must-haves and criteria.</li>
-                    <li><strong>CV files:</strong> PDF resume uploads from applicants.</li>
-                    <li><strong>Hiring Slots:</strong> Recruiter calendar availability.</li>
-                  </ul>
-                </div>
-                <div class="panel-card">
-                  <h4>Expected Outputs</h4>
-                  <ul>
-                    <li><strong>Scorecards:</strong> Structured fit score and evaluation trails.</li>
-                    <li><strong>Shortlists:</strong> Top candidates flagged for interview.</li>
-                    <li><strong>Scheduled slots:</strong> Live calendar invites via Cal.com.</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div class="how-use">
-                <h4>How to Use</h4>
-                <ol>
-                  <li>Upload job requirements and criteria guidelines.</li>
-                  <li>Connect application pipelines (email inbox or ATS integrations).</li>
-                  <li>Review scores on the candidate board and confirm calendar bookings.</li>
-                </ol>
-              </div>
-
-              <div class="how-pipeline">
-                <h4>Data Pipeline &amp; Process</h4>
-                <div class="pipeline-track">
-                  <div class="pipeline-step">
-                    <span class="step-badge">1</span>
-                    <span>CV Parsing</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">2</span>
-                    <span>Must-Haves Scoring</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">3</span>
-                    <span>Fit Evaluation</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">4</span>
-                    <span>Calendar Scheduling</span>
-                  </div>
-                </div>
-              </div>
-            </article>
-
-            <!-- 5. Customer Review Responder -->
-            <article class="how-panel" id="guide-review">
-              <header class="panel-header">
-                <h3>Customer Review Responder</h3>
-                <span class="badge badge-grad">Reputation Management</span>
-              </header>
-              <p class="panel-desc">Monitor customer reviews across Google, Yelp, and Amazon, generate custom responses based on review sentiments, and reply instantly with one-click approval.</p>
-              
-              <div class="panel-grid">
-                <div class="panel-card">
-                  <h4>Required Inputs</h4>
-                  <ul>
-                    <li><strong>Listing Sync:</strong> Google Business, Yelp, or Amazon seller API.</li>
-                    <li><strong>Guidelines:</strong> Brand voice guidelines, response policies.</li>
-                    <li><strong>Customer reviews:</strong> Newly received review stars and text.</li>
-                  </ul>
-                </div>
-                <div class="panel-card">
-                  <h4>Expected Outputs</h4>
-                  <ul>
-                    <li><strong>Draft responses:</strong> Tone-aligned answers ready for publish.</li>
-                    <li><strong>Alert triggers:</strong> Notifications for negative review reviewals.</li>
-                    <li><strong>Sentiment metrics:</strong> Performance feedback statistics.</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div class="how-use">
-                <h4>How to Use</h4>
-                <ol>
-                  <li>Link Google, Yelp, or Amazon listings to active reviewer agents.</li>
-                  <li>Review incoming draft responses in your central approval feed.</li>
-                  <li>Click "Approve" to post response to customer listings via APIs.</li>
-                </ol>
-              </div>
-
-              <div class="how-pipeline">
-                <h4>Data Pipeline &amp; Process</h4>
-                <div class="pipeline-track">
-                  <div class="pipeline-step">
-                    <span class="step-badge">1</span>
-                    <span>Review Monitoring</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">2</span>
-                    <span>Sentiment Analysis</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">3</span>
-                    <span>Drafting Response</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">4</span>
-                    <span>Approved Publish</span>
-                  </div>
-                </div>
-              </div>
-            </article>
-
-            <!-- 6. Appointment Booking Agent -->
-            <article class="how-panel" id="guide-booking">
-              <header class="panel-header">
-                <h3>Appointment Booking Agent</h3>
-                <span class="badge badge-grad">Service Business</span>
-              </header>
-              <p class="panel-desc">Conversational booking agent that handles customer booking requests, reminders, and reschedules synced across Twilio Voice, WhatsApp, and web calendar APIs.</p>
-              
-              <div class="panel-grid">
-                <div class="panel-card">
-                  <h4>Required Inputs</h4>
-                  <ul>
-                    <li><strong>Staff slots:</strong> Live availability synced to team calendars.</li>
-                    <li><strong>Customer detail:</strong> Name, contact details, requested service.</li>
-                    <li><strong>Payment details:</strong> Razorpay / Stripe billing credentials.</li>
-                  </ul>
-                </div>
-                <div class="panel-card">
-                  <h4>Expected Outputs</h4>
-                  <ul>
-                    <li><strong>Calendar entries:</strong> Synced event reservations in team schedules.</li>
-                    <li><strong>Reminders:</strong> Automated WhatsApp reminder notifications.</li>
-                    <li><strong>Bills:</strong> Payment confirmations and structured receipts.</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div class="how-use">
-                <h4>How to Use</h4>
-                <ol>
-                  <li>Connect team calendar feeds and define operational slots.</li>
-                  <li>Embed booking widgets on web pages or deploy to WhatsApp numbers.</li>
-                  <li>Monitor active schedules and review reminders through calendars.</li>
-                </ol>
-              </div>
-
-              <div class="how-pipeline">
-                <h4>Data Pipeline &amp; Process</h4>
-                <div class="pipeline-track">
-                  <div class="pipeline-step">
-                    <span class="step-badge">1</span>
-                    <span>Booking Query</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">2</span>
-                    <span>Availability Verification</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">3</span>
-                    <span>Payment Processing</span>
-                  </div>
-                  <div class="pipeline-arrow"></div>
-                  <div class="pipeline-step">
-                    <span class="step-badge">4</span>
-                    <span>Calendar Reservation</span>
-                  </div>
-                </div>
-              </div>
-            </article>
+          <div class="eyebrow">The catalogue</div>
+          <h2 class="section-title">Ten agents, <em class="grad-text">one universe</em>.</h2>
+          <p class="section-sub">Every agent below is real, deployable code we maintain. Pick the one closest to your problem — or request a custom build if you don't see your shape.</p>
+          <div class="summary-pills">
+            <span class="badge badge-grad" id="pill-total"></span>
+            <span class="badge status-available"><span class="badge-dot"></span><span id="pill-avail"></span></span>
+            <span class="badge status-soon"><span class="badge-dot"></span><span id="pill-soon"></span></span>
           </div>
         </div>
       </div>
-    </section>
 
-    <!-- AGENTS PREVIEW -->
-    <section style="padding-top: 0;">
+
       <div class="container">
-        <div class="section-head reveal">
-          <div>
-            <div class="eyebrow">The universe</div>
-            <h2 class="section-title">Six of ten, just to whet the appetite.</h2>
-          </div>
-          <p class="right">Every agent is production-ready, deployed to real customers, and built on stacks we've used at scale.</p>
+        <div class="results-meta">
+          <span id="results-count"></span>
+          <span class="live"><span class="badge-dot" style="background: var(--mint); box-shadow: 0 0 0 3px rgba(52,211,153,0.18);"></span>Live catalogue</span>
         </div>
-
-        <div id="agents-preview" class="agents-preview"></div>
-        <div class="preview-more reveal">
-          <a class="btn btn-ghost" href="agents.html">See all 10 agents <span id="i-arrow2" style="display:inline-flex;"></span></a>
-        </div>
+        <div id="grid" class="grid"></div>
       </div>
     </section>
 
-    <!-- TECH STACK STRIP -->
-    <section id="stack" style="padding-top: 0;">
-      <div class="container">
-        <div class="reveal">
-          <div class="eyebrow">Tech stack</div>
-          <h2 class="section-title" style="font-size: clamp(28px, 3.6vw, 44px);">Built on the tools your engineers already trust.</h2>
-        </div>
-
-        <div class="tech-strip reveal">
-          <div class="tech-strip-mask">
-            <div class="tech-track" id="tech-track"></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- FINAL CTA -->
-    <section style="padding-top: 0;">
-      <div class="container">
-        <div class="cta-card reveal">
-          <div class="eyebrow" style="margin-bottom: 22px;">Ready when you are</div>
-          <h2 class="section-title" style="margin: 0 auto; text-align: center;">Don't see your agent in the universe?</h2>
-          <p class="section-sub" style="margin: 18px auto 0;">Tell us the workflow that's eating your week. We build the agent, you keep the time.</p>
-          <div class="hero-ctas" style="justify-content: center; margin-top: 32px;">
-            <a class="btn btn-grad" href="contact.html">Request a custom agent</a>
-            <a class="btn btn-ghost" href="agents.html">Browse the catalogue</a>
-          </div>
-        </div>
-      </div>
-    </section>
   </main>
+
+  <!-- DETAILS OVERLAY MODAL -->
+  <div id="details-modal" class="details-modal" role="dialog" aria-modal="true">
+    <div class="details-modal__scrim" onclick="closeAgentDetails()"></div>
+    <div class="details-modal__card">
+      <button class="details-modal__close" onclick="closeAgentDetails()" aria-label="Close details">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+      <div id="details-content"></div>
+    </div>
+  </div>
 
   <div data-shell="footer"></div>
 
@@ -787,8 +471,6 @@
     mountShell('home');
 
     // Hero icons
-    document.getElementById('i-arrow1').innerHTML = ICON('arrow', 16);
-    document.getElementById('i-arrow2').innerHTML = ICON('arrow', 16);
     document.getElementById('orbit-core').innerHTML = ICON('sparkles', 56);
     document.getElementById('o1').innerHTML = ICON('message-circle', 14);
     document.getElementById('o2').innerHTML = ICON('eye', 14);
@@ -796,33 +478,172 @@
     document.getElementById('o4').innerHTML = ICON('target', 14);
     document.getElementById('o5').innerHTML = ICON('mail', 14);
 
-    // Featured preview = first 6 agents
-    document.getElementById('agents-preview').innerHTML =
-      AGENTS.slice(0, 6).map(renderAgentCard).join('');
 
-    // Tech strip — collect unique tools across all agents
-    const allTech = Array.from(new Set(AGENTS.flatMap(a => a.stack))).slice(0, 20);
-    const trackHtml = allTech.map(t => `<div class="tech-pill"><span class="dot"></span>${t}</div>`).join('');
-    document.getElementById('tech-track').innerHTML = trackHtml + trackHtml;  // double for seamless scroll
+    // Build filter tabs
+    const total = AGENTS.length;
+    const avail = AGENTS.filter(a => a.status === 'Available').length;
+    const soon  = total - avail;
+    document.getElementById('pill-total').textContent = `${total} agents`;
+    document.getElementById('pill-avail').textContent = `${avail} available`;
+    document.getElementById('pill-soon').textContent  = `${soon} coming soon`;
 
-    // How It Works Dashboard Tab Icons
-    document.getElementById('ht-rag').innerHTML = ICON('database', 16);
-    document.getElementById('ht-marketing').innerHTML = ICON('megaphone', 16);
-    document.getElementById('ht-stock').innerHTML = ICON('line-chart', 16);
-    document.getElementById('ht-hr').innerHTML = ICON('users', 16);
-    document.getElementById('ht-review').innerHTML = ICON('star', 16);
-    document.getElementById('ht-booking').innerHTML = ICON('calendar', 16);
 
-    // How It Works Dashboard Tab Toggle Script
-    document.querySelectorAll('.how-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.how-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        
-        document.querySelectorAll('.how-panel').forEach(p => p.classList.remove('active'));
-        const target = tab.getAttribute('data-target');
-        document.getElementById(target).classList.add('active');
+    // Render Grid Catalogue
+    const grid = document.getElementById('grid');
+    const meta = document.getElementById('results-count');
+    function renderCatalog(filter = 'All') {
+      const list = filter === 'All' ? AGENTS : AGENTS.filter(a => a.category === filter);
+      meta.textContent = `Showing ${list.length} of ${total} agents`;
+      grid.innerHTML = list.length
+        ? list.map(renderAgentCard).join('')
+        : `<div class="empty">No agents in this category yet — check back soon.</div>`;
+      initReveal();
+      initCardSpotlight();
+      
+      // Reveal immediately for in-viewport items
+      requestAnimationFrame(() => {
+        document.querySelectorAll('#grid .agent-card').forEach((el, i) => {
+          setTimeout(() => el.classList.add('in'), Math.min(i, 8) * 35);
+        });
       });
+    }
+
+
+    // Initial render
+    renderCatalog();
+
+    // ───── DETAILS MODAL CONTROLLER ─────
+    window.openAgentDetails = (id, event) => {
+      if (event) event.preventDefault();
+      const a = AGENTS.find(x => x.id === id);
+      if (!a) return;
+      
+      // Update browser tab title
+      document.title = `${a.name} — VGI Agent Universe`;
+      
+      const statusClass = a.status === 'Available' ? 'status-available' : 'status-soon';
+      const related = AGENTS.filter(x => x.id !== a.id && x.category === a.category).slice(0, 3);
+      const fillerRelated = AGENTS.filter(x => x.id !== a.id && !related.find(r => r.id === x.id)).slice(0, 3 - related.length);
+      const relatedFinal = [...related, ...fillerRelated];
+
+      const howItWorksHtml = a.howItWorks
+        ? `
+          <div class="block reveal" style="margin-bottom: 64px;">
+            <h2><span class="num">03</span> How it works</h2>
+            
+            <div class="panel-grid" style="margin-bottom: 24px;">
+              <div class="panel-card">
+                <h4>Required Inputs</h4>
+                <ul>
+                  ${a.howItWorks.inputs.map(i => `<li>${i}</li>`).join('')}
+                </ul>
+              </div>
+              <div class="panel-card">
+                <h4>Expected Outputs</h4>
+                <ul>
+                  ${a.howItWorks.outputs.map(o => `<li>${o}</li>`).join('')}
+                </ul>
+              </div>
+            </div>
+
+            <div class="how-use" style="margin-bottom: 32px;">
+              <h4 style="font-size: 17px; font-weight: 600; margin-bottom: 14px;">How to Use</h4>
+              <ol>
+                ${a.howItWorks.useSteps.map(step => `<li>${step}</li>`).join('')}
+              </ol>
+            </div>
+
+            <div class="how-pipeline">
+              <h4 style="font-size: 17px; font-weight: 600; margin-bottom: 16px;">Data Pipeline &amp; Process (Workflow)</h4>
+              <div class="pipeline-track">
+                ${a.howItWorks.pipeline.map((step, idx) => `
+                  <div class="pipeline-step">
+                    <span class="step-badge">${idx + 1}</span>
+                    <span>${step}</span>
+                  </div>
+                  ${idx < a.howItWorks.pipeline.length - 1 ? '<div class="pipeline-arrow"></div>' : ''}
+                `).join('')}
+              </div>
+            </div>
+          </div>
+        `
+        : '';
+
+      document.getElementById('details-content').innerHTML = `
+        <div class="crumbs" style="padding-top:0; margin-bottom: 24px;">
+          <a href="#" onclick="closeAgentDetails(); event.preventDefault();">Home</a>
+          <span>${ICON('arrow', 12)}</span>
+          <span style="color: var(--text);">${a.name}</span>
+        </div>
+
+        <div class="detail-hero" style="padding-top:0; padding-bottom:40px;">
+          <div class="reveal">
+            <div class="d-head">
+              <div class="d-icon">${ICON(a.icon, 32)}</div>
+              <div>
+                <div class="d-meta">
+                  <span class="badge badge-grad">${a.category}</span>
+                  <span class="badge ${statusClass}"><span class="badge-dot"></span>${a.status}</span>
+                </div>
+                <h1 class="d-title">${a.name}</h1>
+              </div>
+            </div>
+            <p class="d-tagline">${a.short}</p>
+          </div>
+
+        </div>
+
+        <div class="d-body" style="padding-bottom: 40px;">
+          <div>
+            <div class="block reveal" style="margin-bottom: 64px;">
+              <h2><span class="num">01</span> Overview</h2>
+              <p class="long-desc">${a.long}</p>
+            </div>
+
+            <div class="block reveal" style="margin-bottom: 64px;">
+              <h2><span class="num">02</span> What it does</h2>
+              <div class="features">
+                ${a.features.map(f => `
+                  <div class="feature">
+                    <div class="check">${ICON('check', 14)}</div>
+                    <p>${f}</p>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            ${howItWorksHtml}
+
+          </div>
+        </div>
+      `;
+
+      document.getElementById('details-modal').classList.add('open');
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      
+      // Re-trigger scroll animations and card hovers inside modal
+      setTimeout(() => {
+        initReveal();
+        initCardSpotlight();
+        
+        // Ensure the modal scroll container is scrolled to the top
+        document.querySelector('.details-modal__card').scrollTop = 0;
+      }, 50);
+    };
+
+    window.closeAgentDetails = () => {
+      document.getElementById('details-modal').classList.remove('open');
+      document.documentElement.style.overflow = '';
+      document.body.style.overflow = '';
+      document.title = 'VGI Agent Universe — Production AI agents for real businesses';
+    };
+
+    // Escape key closes details modal
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeAgentDetails();
+      }
     });
 
     initReveal();

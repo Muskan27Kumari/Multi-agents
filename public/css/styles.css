@@ -934,3 +934,182 @@ footer .container {
     flex-shrink: 0;
   }
 }
+
+/* ───────── DETAILS OVERLAY MODAL ───────── */
+.details-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.details-modal.open {
+  display: flex;
+}
+
+.details-modal__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(2, 1, 12, 0.72);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  opacity: 0;
+  transition: opacity 280ms ease;
+}
+
+.details-modal.open .details-modal__scrim {
+  opacity: 1;
+}
+
+.details-modal__card {
+  position: relative;
+  width: 100%;
+  max-width: 960px;
+  background:
+    radial-gradient(800px 300px at 100% 0%, rgba(139, 92, 246, 0.14), transparent 60%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0) 100%),
+    var(--bg-elev-1);
+  border: 1px solid var(--border-strong);
+  border-radius: 28px;
+  padding: 32px 24px;
+  box-shadow: 0 40px 120px -30px rgba(0, 0, 0, 0.85);
+  transform: translateY(24px) scale(0.96);
+  opacity: 0;
+  transition: transform 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 260ms ease;
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  z-index: 2;
+}
+
+.details-modal__card::-webkit-scrollbar {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .details-modal__card {
+    padding: 48px 40px;
+  }
+}
+
+.details-modal.open .details-modal__card {
+  transform: none;
+  opacity: 1;
+}
+
+.details-modal__close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+
+.details-modal__close:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.details-modal__close svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ───────── CATALOG FILTERS & GRID ───────── */
+.summary-pills {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin-top: 28px;
+}
+.filters {
+  position: sticky;
+  top: 68px;
+  z-index: 20;
+  background: rgba(3, 2, 19, 0.85);
+  backdrop-filter: blur(14px) saturate(160%);
+  -webkit-backdrop-filter: blur(14px) saturate(160%);
+  border-bottom: 1px solid var(--border);
+  padding: 16px 0;
+  margin-bottom: 36px;
+}
+.filter-row {
+  display: flex; align-items: center; gap: 12px;
+}
+.filter-tabs {
+  display: flex; gap: 8px; overflow-x: auto;
+  flex: 1;
+  scrollbar-width: none;
+  padding: 4px 0;
+}
+.filter-tabs::-webkit-scrollbar { display: none; }
+.tab {
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+  color: var(--text-muted);
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 180ms ease;
+  font-family: inherit;
+}
+.tab:hover {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+.tab.active {
+  color: white;
+  background: var(--grad);
+  border-color: transparent;
+  box-shadow: 0 4px 20px -6px rgba(139, 92, 246, 0.6);
+}
+.tab .count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 7px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 999px;
+  font-size: 11px;
+  opacity: 0.8;
+}
+.tab:not(.active) .count {
+  background: rgba(255,255,255,0.06);
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr));
+  gap: 20px;
+  padding-bottom: 0;
+}
+.empty {
+  grid-column: 1 / -1;
+  padding: 80px 24px;
+  text-align: center;
+  color: var(--text-dim);
+  border: 1px dashed var(--border);
+  border-radius: 24px;
+}
+.results-meta {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 20px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.results-meta .live {
+  display: inline-flex; align-items: center; gap: 8px;
+}

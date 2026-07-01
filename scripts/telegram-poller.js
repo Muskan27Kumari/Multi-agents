@@ -398,7 +398,8 @@ async function forwardUpdate(update) {
 
   const lowerText = rawText.toLowerCase();
   if (lowerText.startsWith('/start') || lowerText === '/help') {
-    const param = rawText.slice(6).trim();
+    const parts = rawText.trim().split(/\s+/);
+    const param = parts.slice(1).join(' ').trim().toLowerCase();
     if (param) {
       const agentDetails = {
         'rag-knowledge-agent': {

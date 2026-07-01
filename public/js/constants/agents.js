@@ -27,7 +27,30 @@ window.AGENTS = [
       "Auto re-indexing on document changes",
       "Embeddable as a widget or Slack bot"
     ],
-    stack: ["Pinecone", "LlamaIndex", "GPT-4o", "Cohere Rerank", "Next.js"]
+    stack: ["Pinecone", "LlamaIndex", "GPT-4o", "Cohere Rerank", "Next.js"],
+    howItWorks: {
+      inputs: [
+        "<strong>Ingestion Sources:</strong> PDF, DOCX, Notion, or Google Drive folder sync.",
+        "<strong>Query text:</strong> Question from user.",
+        "<strong>Access tokens:</strong> Google Drive or Confluence permissions."
+      ],
+      outputs: [
+        "<strong>Answer:</strong> Synthesis based strictly on reference context.",
+        "<strong>Citations:</strong> Filename, page number, and source URL reference.",
+        "<strong>Confidence Score:</strong> Retrieval similarity value."
+      ],
+      useSteps: [
+        "Connect your document sources in your dashboard panel.",
+        "Wait for the vector indexing engine to chunk and embed files.",
+        "Ask questions directly in the web chat widget, Slack, or Telegram."
+      ],
+      pipeline: [
+        "Document Upload",
+        "Embedding & Vector Store",
+        "Similarity Search",
+        "LLM Citation Synthesis"
+      ]
+    }
   },
   {
     id: "marketing-content-agent",
@@ -47,7 +70,30 @@ window.AGENTS = [
       "Image prompt generation for cover art",
       "A/B headline scoring before you publish"
     ],
-    stack: ["Claude 3.5", "GPT-4o", "Buffer API", "DALL·E 3", "Next.js"]
+    stack: ["Claude 3.5", "GPT-4o", "Buffer API", "DALL·E 3", "Next.js"],
+    howItWorks: {
+      inputs: [
+        "<strong>Campaign brief:</strong> Subject topic, core messaging points.",
+        "<strong>Target Channels:</strong> LinkedIn, Instagram, X (Twitter), Blog, or Email.",
+        "<strong>Brand Tone:</strong> Past top-performing posts style."
+      ],
+      outputs: [
+        "<strong>Draft variants:</strong> Multi-channel formatted text variants.",
+        "<strong>Visual assets:</strong> DALL·E 3 generated cover image concept prompts.",
+        "<strong>Republish Queue:</strong> Direct sync to Buffer/Meta calendar slots."
+      ],
+      useSteps: [
+        "Input your campaign brief details and select target outputs.",
+        "Click \"Generate\" and review the draft variations in your editor.",
+        "Edit or click \"Publish\" to schedule the posts onto your channels."
+      ],
+      pipeline: [
+        "Brief Submission",
+        "Channel Adaptation",
+        "Brand Verification",
+        "Schedule / Publish"
+      ]
+    }
   },
   {
     id: "stock-market-agent",
@@ -67,12 +113,36 @@ window.AGENTS = [
       "News + filing summarisation per holding",
       "Unusual volume + price-move alerts"
     ],
-    stack: ["yfinance", "Alpaca API", "GPT-4o", "TA-Lib", "Postgres"]
+    stack: ["yfinance", "Alpaca API", "GPT-4o", "TA-Lib", "Postgres"],
+    howItWorks: {
+      inputs: [
+        "<strong>Broker linkage:</strong> Read-only broker API or CSV upload.",
+        "<strong>Watchlist symbols:</strong> Specific stock tickers.",
+        "<strong>Alert thresholds:</strong> Price/Volume change triggers."
+      ],
+      outputs: [
+        "<strong>Morning Briefing:</strong> Summary watchlist reports before market open.",
+        "<strong>Real-time alerts:</strong> Slack, Webhook, or Telegram text notifications.",
+        "<strong>Source documentation:</strong> Direct links to financial reports or filings."
+      ],
+      useSteps: [
+        "Link your brokerage account securely using read-only API access.",
+        "Define triggers for stock watchlists.",
+        "Configure notifications to hit your workspace channel (Slack/Telegram)."
+      ],
+      pipeline: [
+        "Portfolio Synchronization",
+        "TA & News Crawling",
+        "Signal Analysis",
+        "Alert Dispatch"
+      ]
+    }
   },
   {
     id: "hr-recruitment-agent",
     name: "HR Recruitment Agent",
     bot: "@vgi_resume_assistant_bot",
+    botName: "VGI Resume Analyzer",
     category: "HR",
     icon: "users",
     status: "Available",
@@ -87,7 +157,30 @@ window.AGENTS = [
       "Bias-audit report on shortlists",
       "Greenhouse / Lever / Zoho ATS integration"
     ],
-    stack: ["OpenAI Whisper", "GPT-4o", "Greenhouse API", "Cal.com", "Postgres"]
+    stack: ["OpenAI Whisper", "GPT-4o", "Greenhouse API", "Cal.com", "Postgres"],
+    howItWorks: {
+      inputs: [
+        "<strong>Job Description:</strong> Active role must-haves and criteria.",
+        "<strong>CV files:</strong> PDF resume uploads from applicants.",
+        "<strong>Hiring Slots:</strong> Recruiter calendar availability."
+      ],
+      outputs: [
+        "<strong>Scorecards:</strong> Structured fit score and evaluation trails.",
+        "<strong>Shortlists:</strong> Top candidates flagged for interview.",
+        "<strong>Scheduled slots:</strong> Live calendar invites via Cal.com."
+      ],
+      useSteps: [
+        "Upload job requirements and criteria guidelines.",
+        "Connect application pipelines (email inbox or ATS integrations).",
+        "Review scores on the candidate board and confirm calendar bookings."
+      ],
+      pipeline: [
+        "CV Parsing",
+        "Must-Haves Scoring",
+        "Fit Evaluation",
+        "Calendar Scheduling"
+      ]
+    }
   },
   {
     id: "customer-review-responder",
@@ -107,7 +200,30 @@ window.AGENTS = [
       "Sentiment + theme reporting",
       "Escalation rules for critical reviews"
     ],
-    stack: ["Google Business API", "Yelp Fusion", "Claude 3.5", "Slack", "Next.js"]
+    stack: ["Google Business API", "Yelp Fusion", "Claude 3.5", "Slack", "Next.js"],
+    howItWorks: {
+      inputs: [
+        "<strong>Listing Sync:</strong> Google Business, Yelp, or Amazon seller API.",
+        "<strong>Guidelines:</strong> Brand voice guidelines, response policies.",
+        "<strong>Customer reviews:</strong> Newly received review stars and text."
+      ],
+      outputs: [
+        "<strong>Draft responses:</strong> Tone-aligned answers ready for publish.",
+        "<strong>Alert triggers:</strong> Notifications for negative review reviewals.",
+        "<strong>Sentiment metrics:</strong> Performance feedback statistics."
+      ],
+      useSteps: [
+        "Link Google, Yelp, or Amazon listings to active reviewer agents.",
+        "Review incoming draft responses in your central approval feed.",
+        "Click \"Approve\" to post response to customer listings via APIs."
+      ],
+      pipeline: [
+        "Review Monitoring",
+        "Sentiment Analysis",
+        "Drafting Response",
+        "Approved Publish"
+      ]
+    }
   },
   {
     id: "appointment-booking-agent",
@@ -127,7 +243,30 @@ window.AGENTS = [
       "Optional pre-payment via Razorpay / Stripe",
       "No-show tracking and follow-up flows"
     ],
-    stack: ["Twilio Voice", "WhatsApp API", "Cal.com", "Razorpay", "Postgres"]
+    stack: ["Twilio Voice", "WhatsApp API", "Cal.com", "Razorpay", "Postgres"],
+    howItWorks: {
+      inputs: [
+        "<strong>Staff slots:</strong> Live availability synced to team calendars.",
+        "<strong>Customer detail:</strong> Name, contact details, requested service.",
+        "<strong>Payment details:</strong> Razorpay / Stripe billing credentials."
+      ],
+      outputs: [
+        "<strong>Calendar entries:</strong> Synced event reservations in team schedules.",
+        "<strong>Reminders:</strong> Automated WhatsApp reminder notifications.",
+        "<strong>Bills:</strong> Payment confirmations and structured receipts."
+      ],
+      useSteps: [
+        "Connect team calendar feeds and define operational slots.",
+        "Embed booking widgets on web pages or deploy to WhatsApp numbers.",
+        "Monitor active schedules and review reminders through calendars."
+      ],
+      pipeline: [
+        "Booking Query",
+        "Availability Verification",
+        "Payment Processing",
+        "Calendar Reservation"
+      ]
+    }
   },
   {
     id: "whatsapp-ai-assistant",
@@ -147,7 +286,30 @@ window.AGENTS = [
       "Appointment + reminder flows out of the box",
       "Conversation analytics & intent reports"
     ],
-    stack: ["WhatsApp Cloud API", "GPT-4o", "LangChain", "Pinecone", "Node.js"]
+    stack: ["WhatsApp Cloud API", "GPT-4o", "LangChain", "Pinecone", "Node.js"],
+    howItWorks: {
+      inputs: [
+        "<strong>Channel Credentials:</strong> WhatsApp Business API access tokens.",
+        "<strong>Knowledge Docs:</strong> Product lists, FAQs, and support guidelines.",
+        "<strong>Lead Schema:</strong> Fields to collect (e.g. email, phone, requirements)."
+      ],
+      outputs: [
+        "<strong>Automated Replies:</strong> Conversational answers in brand tone.",
+        "<strong>Pushed Leads:</strong> Structured lead profiles synced directly to your CRM.",
+        "<strong>Handoff Alerts:</strong> Slack/Email notification when human intervention is needed."
+      ],
+      useSteps: [
+        "Configure your WhatsApp Business API and hook it to the platform.",
+        "Upload FAQ documents and set up lead capture criteria.",
+        "Let the agent handle inbound messages and review human handoffs."
+      ],
+      pipeline: [
+        "Inbound Message",
+        "Intent Classification",
+        "CRM Context Lookup",
+        "Auto-Response / Handoff"
+      ]
+    }
   },
   {
     id: "vision-ai-agent",
@@ -167,7 +329,30 @@ window.AGENTS = [
       "Real-time alerts via webhook or WhatsApp",
       "Privacy-first: deploys on your infra if needed"
     ],
-    stack: ["YOLOv8", "OpenCV", "PyTorch", "ONNX", "NVIDIA Jetson"]
+    stack: ["YOLOv8", "OpenCV", "PyTorch", "ONNX", "NVIDIA Jetson"],
+    howItWorks: {
+      inputs: [
+        "<strong>Video Feed:</strong> RTSP CCTV streams or folder of uploaded images.",
+        "<strong>Detection Classes:</strong> Specific objects to count or inspect (e.g., defects, boxes, masks).",
+        "<strong>Alert Thresholds:</strong> Confidence score filters and trigger frequencies."
+      ],
+      outputs: [
+        "<strong>Annotated Frames:</strong> Video clips or photos with highlighted detection boxes.",
+        "<strong>Detection Logs:</strong> Structured JSON payloads of counts, times, and labels.",
+        "<strong>Incident Alerts:</strong> Immediate Telegram or Webhook pings on critical violations."
+      ],
+      useSteps: [
+        "Register your video camera streams or batch folders.",
+        "Define object detection classes and regions of interest.",
+        "Receive alerts and review detection reports in your analytics dashboard."
+      ],
+      pipeline: [
+        "Frame Acquisition",
+        "Object Detection (YOLOv8)",
+        "Coordinate Filtering",
+        "Alert Notification"
+      ]
+    }
   },
   {
     id: "ecommerce-price-monitor",
@@ -187,7 +372,30 @@ window.AGENTS = [
       "Daily delta reports per category",
       "Shopify + Amazon Seller Central push"
     ],
-    stack: ["Playwright", "BrightData", "Postgres", "Shopify API", "FastAPI"]
+    stack: ["Playwright", "BrightData", "Postgres", "Shopify API", "FastAPI"],
+    howItWorks: {
+      inputs: [
+        "<strong>Your Catalog:</strong> List of product SKUs with margin floors and target pricing rules.",
+        "<strong>Competitor URLs:</strong> Product pages on Amazon, Flipkart, or DTC websites.",
+        "<strong>Scan Frequency:</strong> Scheduled intervals for monitoring competitor adjustments."
+      ],
+      outputs: [
+        "<strong>Price Alerts:</strong> Real-time push reports when a competitor shifts their price.",
+        "<strong>Repricing Suggestions:</strong> Recommended margin-safe adjustments for your store.",
+        "<strong>Market Summary:</strong> Daily analysis of pricing trends and stock-out alerts."
+      ],
+      useSteps: [
+        "Connect your Shopify or WooCommerce store securely.",
+        "Input product SKUs, margin floors, and competitor page links.",
+        "Review repricing suggestions and apply updates with a single click."
+      ],
+      pipeline: [
+        "Competitor Scrape (Playwright)",
+        "Price Extraction",
+        "Margin Check",
+        "Repricing Hook"
+      ]
+    }
   },
   {
     id: "youtube-seo-research-agent",
@@ -207,7 +415,30 @@ window.AGENTS = [
       "Auto chapter markers from your script",
       "Thumbnail concept prompts"
     ],
-    stack: ["YouTube Data API", "GPT-4o", "VidIQ data", "Python", "Supabase"]
+    stack: ["YouTube Data API", "GPT-4o", "VidIQ data", "Python", "Supabase"],
+    howItWorks: {
+      inputs: [
+        "<strong>Channel link:</strong> Read-only YouTube Data API access.",
+        "<strong>Target Keywords:</strong> Primary search topics or competitor channel URLs.",
+        "<strong>Draft Script/Video:</strong> Raw text script or video draft file."
+      ],
+      outputs: [
+        "<strong>Optimized Metadata:</strong> Tailored titles, description drafts, and tags.",
+        "<strong>Chapter Timestamps:</strong> Structured timestamp markers for the timeline.",
+        "<strong>Keyword Gap Reports:</strong> Analysis showing high-traffic, low-competition keywords."
+      ],
+      useSteps: [
+        "Link your YouTube channel and enter search phrases in the dashboard.",
+        "Upload your draft script to generate structured descriptions and chapter markers.",
+        "Copy-paste optimized metadata into YouTube Studio before publishing."
+      ],
+      pipeline: [
+        "Channel Analysis",
+        "Keyword Research",
+        "Metadata Synthesis",
+        "Output Optimization"
+      ]
+    }
   }
 ];
 

@@ -13,7 +13,7 @@ window.renderAgentCard = (a) => {
       </div>
       <p class="agent-desc">${a.short}</p>
       <div class="actions">
-        <a class="req-link" href="agent.html?id=${a.id}">View details ${ICON('arrow', 14)}</a>
+        <a class="req-link" href="?id=${a.id}" onclick="openAgentDetails('${a.id}', event)">View details ${ICON('arrow', 14)}</a>
         <button class="btn btn-sm btn-grad" type="button" data-request="${a.id}">Request</button>
       </div>
     </article>

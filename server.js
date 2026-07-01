@@ -319,7 +319,7 @@ function sendEmail(options) {
   });
 }
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   // Decode URL in case of special characters
   let safeUrl;
   try {
@@ -335,6 +335,36 @@ const server = http.createServer((req, res) => {
 
   // Handle Bot Config API request
   if (req.method === 'GET' && pathname === '/api/bot-config') {
+    loadEnv(); // Reload env vars in case they changed
+    const tokens = {
+      universe: process.env.TELEGRAM_BOT_TOKEN,
+      rag: process.env.TELEGRAM_BOT_TOKEN_RAG,
+      review: process.env.TELEGRAM_BOT_TOKEN_REVIEW,
+      booking: process.env.TELEGRAM_BOT_TOKEN_BOOKING,
+      marketing: process.env.TELEGRAM_BOT_TOKEN_MARKETING,
+      portfolio: process.env.TELEGRAM_BOT_TOKEN_PORTFOLIO,
+      resume: process.env.TELEGRAM_BOT_TOKEN_RESUME,
+      hr: process.env.TELEGRAM_BOT_TOKEN_HR,
+      drive_rag: process.env.TELEGRAM_BOT_TOKEN_DRIVE_RAG,
+    };
+
+    const promises = Object.entries(tokens).map(async ([key, token]) => {
+      const envKey = `TELEGRAM_BOT_USERNAME_${key.toUpperCase()}`;
+      const override = process.env[envKey] || (key === 'universe' ? process.env.TELEGRAM_BOT_USERNAME : null);
+      if (override && override.trim()) {
+        botUsernamesCache[key] = override.trim().replace(/^@/, "");
+        return;
+      }
+      if (token && !botUsernamesCache[key]) {
+        const username = await getBotUsername(token);
+        if (username) {
+          botUsernamesCache[key] = username;
+        }
+      }
+    });
+
+    await Promise.all(promises);
+
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify(botUsernamesCache));
     return;
