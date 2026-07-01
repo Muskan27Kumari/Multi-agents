@@ -484,6 +484,51 @@ footer {
   transform: translateX(2px);
 }
 
+/* Card disabled state for Coming Soon agents */
+.card.card-disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.card.card-disabled:hover {
+  transform: none;
+  border-color: var(--border);
+  box-shadow: none;
+}
+
+.card.card-disabled::before {
+  display: none;
+}
+
+/* Disabled Request Button */
+.btn-disabled,
+.btn:disabled {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-dim) !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
+
+/* Disabled View Details Link */
+.req-link-disabled {
+  color: var(--text-dim) !important;
+  cursor: not-allowed !important;
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.req-link-disabled:hover {
+  gap: 6px !important;
+}
+
+.req-link-disabled svg {
+  transform: none !important;
+  color: var(--text-dim) !important;
+}
+
 /* ───────── SECTIONS ───────── */
 section {
   padding: 96px 0;

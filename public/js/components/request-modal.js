@@ -152,7 +152,7 @@ const TG_ICON = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21.94 4.
 
 window.openRequestModal = (id) => {
   const a = AGENTS.find((x) => x.id === id);
-  if (!a) return;
+  if (!a || a.status !== "Available") return;
   const handle = a.bot.replace(/^@/, "");
   const uni = UNIVERSE_BOT.replace(/^@/, "");
 
@@ -222,11 +222,6 @@ window.openRequestModal = (id) => {
           </div>
         `;
       }).join("")}
-
-      <div class="req-modal__divider">or</div>
-      <p class="req-modal__foot">
-        Prefer a form? <a href="contact.html?agent=${encodeURIComponent(a.name)}">Send a request here</a> and we'll reach out on WhatsApp.
-      </p>
     </div>
   `;
 
@@ -263,6 +258,10 @@ document.addEventListener("click", (e) => {
   const trigger = e.target.closest("[data-request]");
   if (trigger) {
     e.preventDefault();
-    openRequestModal(trigger.getAttribute("data-request"));
+    const id = trigger.getAttribute("data-request");
+    const a = AGENTS.find((x) => x.id === id);
+    if (a && a.status === "Available") {
+      openRequestModal(id);
+    }
   }
 });
